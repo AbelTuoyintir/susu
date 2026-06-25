@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CoopAdmin — Savings & Loans Management</title>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg2: #161b22;
+    --bg3: #1c2230;
+    --bg4: #21262d;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e6edf3;
+    --text2: #8b949e;
+    --text3: #6e7681;
+    --accent: #00d4a8;
+    --accent2: #00b894;
+    --accent-glow: rgba(0,212,168,0.15);
+    --accent-dim: rgba(0,212,168,0.08);
+    --danger: #f85149;
+    --danger-bg: rgba(248,81,73,0.1);
+    --warn: #d29922;
+    --warn-bg: rgba(210,153,34,0.1);
+    --info: #388bfd;
+    --info-bg: rgba(56,139,253,0.1);
+    --success: #3fb950;
+    --success-bg: rgba(63,185,80,0.1);
+    --purple: #bc8cff;
+    --purple-bg: rgba(188,140,255,0.1);
+    --sidebar-w: 220px;
+    --r: 8px;
+    --r2: 12px;
+    --fs: 12px;
+    --fs-sm: 11px;
+    --fs-md: 13px;
+    --fs-lg: 15px;
+    --fs-xl: 20px;
+    --fs-2xl: 26px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); font-size: var(--fs); line-height: 1.5; overflow-x: hidden; }
+  a { color: inherit; text-decoration: none; }
+  button { font-family: inherit; cursor: pointer; border: none; outline: none; }
+  input, select, textarea { font-family: inherit; outline: none; }
+
+  /* SIDEBAR */
+  .sidebar {
+    position: fixed; left: 0; top: 0; bottom: 0; width: var(--sidebar-w);
+    background: var(--bg2); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; z-index: 100; transition: transform .25s ease;
+  }
+  .sidebar-logo {
+    padding: 18px 16px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .logo-icon {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), #0099cc);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; color: #000; flex-shrink: 0;
+  }
+  .logo-text { font-size: var(--fs-md); font-weight: 600; letter-spacing: -.3px; }
+  .logo-sub { font-size: 10px; color: var(--text3); margin-top: 1px; }
+  .sidebar-nav { flex: 1; overflow-y: auto; padding: 10px 8px; }
+  .nav-section { font-size: 10px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: .8px; padding: 10px 8px 6px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 9px;
+    padding: 8px 10px; border-radius: var(--r); cursor: pointer;
+    font-size: var(--fs); color: var(--text2); transition: all .15s;
+    margin-bottom: 1px; position: relative;
+  }
+  .nav-item:hover { background: var(--bg3); color: var(--text); }
+  .nav-item.active { background: var(--accent-dim); color: var(--accent); font-weight: 500; }
+  .nav-item.active::before { content:''; position:absolute; left:0; top:20%; bottom:20%; width:3px; background:var(--accent); border-radius:0 3px 3px 0; }
+  .nav-icon { font-size: 14px; width: 18px; text-align: center; }
+  .nav-badge { margin-left: auto; background: var(--danger); color: #fff; font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 20px; }
+  .sidebar-footer { padding: 12px 8px; border-top: 1px solid var(--border); }
+  .admin-card { display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:var(--r); }
+  .avatar { width:28px; height:28px; border-radius:50%; background: linear-gradient(135deg,#667eea,#764ba2); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; color:#fff; flex-shrink:0; }
+  .admin-name { font-size: var(--fs); font-weight:500; }
+  .admin-role { font-size: 10px; color: var(--text3); }
+
+  /* TOPBAR */
+  .topbar {
+    position: fixed; top: 0; left: var(--sidebar-w); right: 0; height: 52px;
+    background: var(--bg2); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px; padding: 0 20px; z-index: 90;
+  }
+  .hamburger { display:none; background:none; color:var(--text2); font-size:18px; padding:4px; }
+  .page-title { font-size: var(--fs-md); font-weight: 600; }
+  .page-subtitle { font-size: var(--fs-sm); color: var(--text3); }
+  .topbar-right { margin-left: auto; display:flex; align-items:center; gap:10px; }
+  .search-box {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg3); border: 1px solid var(--border); border-radius: var(--r);
+    padding: 6px 12px;
+  }
+  .search-box input { background:none; border:none; color:var(--text); font-size:var(--fs-sm); width:160px; }
+  .search-box input::placeholder { color: var(--text3); }
+  .icon-btn { width:32px; height:32px; background:var(--bg3); border:1px solid var(--border); border-radius:var(--r); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all .15s; color: var(--text2); font-size: 14px; }
+  .icon-btn:hover { border-color:var(--border2); color:var(--text); }
+  .notif-dot { position:relative; }
+  .notif-dot::after { content:''; position:absolute; top:6px; right:6px; width:6px; height:6px; background:var(--danger); border-radius:50%; border:1.5px solid var(--bg2); }
+
+  /* MAIN */
+  .main { margin-left: var(--sidebar-w); margin-top: 52px; padding: 20px; min-height: calc(100vh - 52px); }
+
+  /* PAGES */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* CARDS */
+  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r2); padding: 16px; }
+  .card-sm { padding: 12px 14px; }
+  .card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .card-title { font-size: var(--fs-md); font-weight: 600; }
+  .card-sub { font-size: var(--fs-sm); color: var(--text3); margin-top:2px; }
+
+  /* STAT CARDS */
+  .stats-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap:12px; margin-bottom:20px; }
+  .stat-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--r2); padding:14px; transition:border-color .15s; }
+  .stat-card:hover { border-color: var(--border2); }
+  .stat-label { font-size:var(--fs-sm); color:var(--text3); margin-bottom:6px; display:flex; align-items:center; gap:5px; }
+  .stat-value { font-size: var(--fs-xl); font-weight:600; font-family:'DM Mono',monospace; letter-spacing:-.5px; }
+  .stat-change { font-size:var(--fs-sm); margin-top:4px; display:flex; align-items:center; gap:3px; }
+  .up { color: var(--success); } .down { color: var(--danger); }
+  .stat-icon { width:28px; height:28px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:13px; margin-bottom:10px; }
+
+  /* GRIDS */
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+  .col-span-2 { grid-column: span 2; }
+
+  /* TABLES */
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; }
+  th { font-size:var(--fs-sm); font-weight:500; color:var(--text3); text-align:left; padding:8px 12px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  td { font-size:var(--fs); padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:middle; }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .mono { font-family:'DM Mono',monospace; }
+
+  /* BADGES */
+  .badge { display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:500; padding:3px 8px; border-radius:20px; white-space:nowrap; }
+  .badge-success { background:var(--success-bg); color:var(--success); }
+  .badge-danger { background:var(--danger-bg); color:var(--danger); }
+  .badge-warn { background:var(--warn-bg); color:var(--warn); }
+  .badge-info { background:var(--info-bg); color:var(--info); }
+  .badge-purple { background:var(--purple-bg); color:var(--purple); }
+  .badge-neutral { background:var(--bg3); color:var(--text2); }
+  .dot { width:6px; height:6px; border-radius:50%; background:currentColor; display:inline-block; }
+
+  /* BUTTONS */
+  .btn { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:var(--r); font-size:var(--fs); font-weight:500; transition:all .15s; border:1px solid transparent; cursor:pointer; }
+  .btn-primary { background:var(--accent); color:#000; border-color:var(--accent); }
+  .btn-primary:hover { background:var(--accent2); }
+  .btn-outline { background:transparent; color:var(--text2); border-color:var(--border2); }
+  .btn-outline:hover { background:var(--bg3); color:var(--text); }
+  .btn-danger { background:var(--danger-bg); color:var(--danger); border-color:rgba(248,81,73,0.2); }
+  .btn-danger:hover { background:rgba(248,81,73,0.2); }
+  .btn-sm { padding:5px 10px; font-size:var(--fs-sm); }
+  .btn-xs { padding:3px 8px; font-size:10px; }
+  .btn-icon { width:30px; height:30px; padding:0; justify-content:center; }
+
+  /* FILTERS */
+  .filters { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  .filter-input { background:var(--bg3); border:1px solid var(--border); border-radius:var(--r); padding:6px 10px; font-size:var(--fs-sm); color:var(--text); }
+  .filter-input:focus { border-color:var(--accent); }
+
+  /* USER AVATAR ROW */
+  .user-row { display:flex; align-items:center; gap:9px; }
+  .user-avatar { width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:600; color:#fff; flex-shrink:0; }
+
+  /* PROGRESS */
+  .progress-bar { height:4px; background:var(--bg4); border-radius:4px; overflow:hidden; }
+  .progress-fill { height:100%; border-radius:4px; transition:width .3s; }
+
+  /* CHART CONTAINER */
+  .chart-container { position:relative; }
+
+  /* LOAN DETAIL CARD */
+  .loan-detail { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .detail-row { display:flex; flex-direction:column; gap:2px; }
+  .detail-label { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; }
+  .detail-value { font-size:var(--fs-md); font-weight:500; }
+
+  /* TIMELINE */
+  .timeline { position:relative; padding-left:20px; }
+  .timeline::before { content:''; position:absolute; left:6px; top:4px; bottom:4px; width:1px; background:var(--border); }
+  .timeline-item { position:relative; padding-bottom:14px; }
+  .timeline-dot { position:absolute; left:-17px; top:3px; width:8px; height:8px; border-radius:50%; border:2px solid var(--bg2); }
+  .timeline-time { font-size:10px; color:var(--text3); margin-bottom:2px; }
+  .timeline-text { font-size:var(--fs-sm); }
+
+  /* DONUT LABEL */
+  .donut-center { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; }
+
+  /* SETTINGS */
+  .setting-row { display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--border); }
+  .setting-row:last-child { border-bottom:none; }
+  .setting-info { flex:1; }
+  .setting-name { font-size:var(--fs-sm); font-weight:500; margin-bottom:2px; }
+  .setting-desc { font-size:var(--fs-sm); color:var(--text3); }
+  .setting-control { display:flex; align-items:center; gap:8px; }
+  .setting-input { background:var(--bg3); border:1px solid var(--border); border-radius:var(--r); padding:5px 10px; font-size:var(--fs-sm); color:var(--text); width:90px; text-align:right; }
+  .setting-input:focus { border-color:var(--accent); }
+  .toggle { width:36px; height:20px; border-radius:20px; border:none; cursor:pointer; position:relative; transition:background .2s; }
+  .toggle.on { background:var(--accent); }
+  .toggle.off { background:var(--bg4); border:1px solid var(--border2); }
+  .toggle::after { content:''; position:absolute; width:14px; height:14px; border-radius:50%; background:#fff; top:3px; transition:left .2s; }
+  .toggle.on::after { left:19px; }
+  .toggle.off::after { left:3px; }
+
+  /* NOTIFICATION PANEL */
+  .notif-item { display:flex; gap:10px; padding:12px 0; border-bottom:1px solid var(--border); }
+  .notif-item:last-child { border-bottom:none; }
+  .notif-icon-wrap { width:32px; height:32px; border-radius:var(--r); display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+  .notif-content { flex:1; }
+  .notif-title { font-size:var(--fs-sm); font-weight:500; margin-bottom:2px; }
+  .notif-msg { font-size:var(--fs-sm); color:var(--text3); }
+  .notif-time { font-size:10px; color:var(--text3); margin-top:3px; }
+
+  /* ALERT BANNER */
+  .alert-banner { display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:var(--r); margin-bottom:14px; }
+  .alert-banner.danger { background:var(--danger-bg); border:1px solid rgba(248,81,73,0.2); color:var(--danger); }
+  .alert-banner.warn { background:var(--warn-bg); border:1px solid rgba(210,153,34,0.2); color:var(--warn); }
+
+  /* MOBILE OVERLAY */
+  .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:99; }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    .sidebar { transform: translateX(-100%); }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay.show { display:block; }
+    .topbar { left: 0; }
+    .main { margin-left: 0; }
+    .hamburger { display:flex; }
+    .grid-2, .grid-3 { grid-template-columns:1fr; }
+    .col-span-2 { grid-column:span 1; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .search-box { display:none; }
+    .loan-detail { grid-template-columns:1fr; }
+  }
+  @media (max-width: 480px) {
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .main { padding: 12px; }
+  }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width:4px; height:4px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:4px; }
+
+  /* SWAl override */
+  .swal2-popup { font-family:'DM Sans',sans-serif !important; font-size:13px !important; }
+</style>
+</head>
+<body>
+
+<!-- Sidebar Overlay -->
+<div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">C</div>
+    <div>
+      <div class="logo-text">CoopAdmin</div>
+      <div class="logo-sub">Savings & Loans</div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">Overview</div>
+    <div class="nav-item active" onclick="showPage('dashboard',this)"><span class="nav-icon">◈</span> Dashboard</div>
+
+    <div class="nav-section">Management</div>
+    <div class="nav-item" onclick="showPage('users',this)"><span class="nav-icon">⊕</span> Users</div>
+    <div class="nav-item" onclick="showPage('books',this)"><span class="nav-icon">▣</span> Books</div>
+    <div class="nav-item" onclick="showPage('contributions',this)"><span class="nav-icon">◎</span> Contributions</div>
+    <div class="nav-item" onclick="showPage('loans',this)"><span class="nav-icon">◈</span> Loans <span class="nav-badge">4</span></div>
+
+    <div class="nav-section">Finance</div>
+    <div class="nav-item" onclick="showPage('payments',this)"><span class="nav-icon">▷</span> Payments</div>
+    <div class="nav-item" onclick="showPage('defaulters',this)"><span class="nav-icon">◉</span> Defaulters <span class="nav-badge">7</span></div>
+    <div class="nav-item" onclick="showPage('reports',this)"><span class="nav-icon">◫</span> Reports</div>
+
+    <div class="nav-section">System</div>
+    <div class="nav-item" onclick="showPage('notifications',this)"><span class="nav-icon">◌</span> Notifications</div>
+    <div class="nav-item" onclick="showPage('settings',this)"><span class="nav-icon">⊛</span> Settings</div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="admin-card">
+      <div class="avatar">SA</div>
+      <div>
+        <div class="admin-name">Super Admin</div>
+        <div class="admin-role">Administrator</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <button class="hamburger" onclick="toggleSidebar()">☰</button>
+  <div>
+    <div class="page-title" id="topbar-title">Dashboard</div>
+    <div class="page-subtitle" id="topbar-sub">Friday, 3 April 2026</div>
+  </div>
+  <div class="topbar-right">
+    <div class="search-box">
+      <span style="color:var(--text3);font-size:12px">⌕</span>
+      <input type="text" placeholder="Search anything…">
+    </div>
+    <div class="icon-btn notif-dot" onclick="showPage('notifications', document.querySelector('[onclick*=notifications]'))">🔔</div>
+    <div class="icon-btn" onclick="showPage('settings', document.querySelector('[onclick*=settings]'))">⚙</div>
+  </div>
+</header>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+
+<!-- ═══════════════════════════════════════════
+     PAGE 1: DASHBOARD
+═══════════════════════════════════════════ -->
+<div class="page active" id="page-dashboard">
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--accent-dim);color:var(--accent)">👥</div>
+      <div class="stat-label">Total Users</div>
+      <div class="stat-value" style="color:var(--accent)">248</div>
+      <div class="stat-change up">↑ 12 this month</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--info-bg);color:var(--info)">📒</div>
+      <div class="stat-label">Total Books</div>
+      <div class="stat-value" style="color:var(--info)">612</div>
+      <div class="stat-change" style="color:var(--text3)">Avg 2.4 per user</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--success-bg);color:var(--success)">💰</div>
+      <div class="stat-label">Contributions</div>
+      <div class="stat-value" style="color:var(--success)">GH₵ 48.2K</div>
+      <div class="stat-change up">↑ 8.4% vs last wk</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--purple-bg);color:var(--purple)">🏦</div>
+      <div class="stat-label">Loans Given</div>
+      <div class="stat-value" style="color:var(--purple)">GH₵ 91.5K</div>
+      <div class="stat-change" style="color:var(--text3)">34 active loans</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--warn-bg);color:var(--warn)">📈</div>
+      <div class="stat-label">Total Profit</div>
+      <div class="stat-value" style="color:var(--warn)">GH₵ 7.3K</div>
+      <div class="stat-change up">↑ Interest earned</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--danger-bg);color:var(--danger)">⏳</div>
+      <div class="stat-label">Pending Loans</div>
+      <div class="stat-value" style="color:var(--danger)">4</div>
+      <div class="stat-change down">Needs approval</div>
+    </div>
+    <div class="stat-card col-span-2">
+      <div class="stat-icon" style="background:var(--danger-bg);color:var(--danger)">⚠️</div>
+      <div class="stat-label">Missed Contributions</div>
+      <div class="stat-value" style="color:var(--danger)">7</div>
+      <div class="stat-change down">↑ 3 since last week</div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:16px">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Weekly Contributions</div>
+          <div class="card-sub">Past 8 weeks</div>
+        </div>
+        <span class="badge badge-success"><span class="dot"></span> Live</span>
+      </div>
+      <div class="chart-container" style="height:200px">
+        <canvas id="contribChart"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Fund Breakdown</div>
+          <div class="card-sub">Welfare · Loans · Penalties</div>
+        </div>
+      </div>
+      <div class="chart-container" style="height:200px; position:relative;">
+        <canvas id="donutChart"></canvas>
+        <div class="donut-center">
+          <div style="font-size:18px;font-weight:600;color:var(--accent)">GH₵ 48.2K</div>
+          <div style="font-size:10px;color:var(--text3)">Total Pool</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Recent Transactions</div>
+        <button class="btn btn-outline btn-sm" onclick="showPage('payments', document.querySelector('[onclick*=payments]'))">View all</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>User</th><th>Type</th><th>Amount</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td><div class="user-row"><div class="user-avatar" style="background:#00b894">KA</div>Kofi Asante</div></td><td><span class="badge badge-info">Contribution</span></td><td class="mono">GH₵ 120</td><td><span class="badge badge-success">Paid</span></td></tr>
+            <tr><td><div class="user-row"><div class="user-avatar" style="background:#6c5ce7">AM</div>Ama Mensah</div></td><td><span class="badge badge-purple">Loan</span></td><td class="mono">GH₵ 800</td><td><span class="badge badge-success">Active</span></td></tr>
+            <tr><td><div class="user-row"><div class="user-avatar" style="background:#fd79a8">YO</div>Yaw Osei</div></td><td><span class="badge badge-info">Contribution</span></td><td class="mono">GH₵ 120</td><td><span class="badge badge-warn">Pending</span></td></tr>
+            <tr><td><div class="user-row"><div class="user-avatar" style="background:#e17055">AB</div>Abena Boateng</div></td><td><span class="badge badge-danger">Penalty</span></td><td class="mono">GH₵ 25</td><td><span class="badge badge-success">Paid</span></td></tr>
+            <tr><td><div class="user-row"><div class="user-avatar" style="background:#0984e3">FK</div>Fiifi Kumi</div></td><td><span class="badge badge-purple">Loan Repay</span></td><td class="mono">GH₵ 450</td><td><span class="badge badge-success">Paid</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Activity Feed</div>
+      </div>
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="timeline-dot" style="background:var(--success)"></div>
+          <div class="timeline-time">Today 09:14</div>
+          <div class="timeline-text">Kofi Asante made a weekly contribution of <strong>GH₵ 120</strong></div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot" style="background:var(--purple)"></div>
+          <div class="timeline-time">Today 08:52</div>
+          <div class="timeline-text">Loan #LN-2024 approved for Ama Mensah</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot" style="background:var(--danger)"></div>
+          <div class="timeline-time">Yesterday 17:00</div>
+          <div class="timeline-text">3 users missed this week's contribution — reminder sent</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot" style="background:var(--warn)"></div>
+          <div class="timeline-time">Yesterday 14:30</div>
+          <div class="timeline-text">Penalty of GH₵ 25 applied to Abena Boateng</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot" style="background:var(--info)"></div>
+          <div class="timeline-time">Mon 11:00</div>
+          <div class="timeline-text">New user registered: Kwame Darko (Book #BK-241 assigned)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE 2: USERS
+═══════════════════════════════════════════ -->
+<div class="page" id="page-users">
+  <div class="filters">
+    <input class="filter-input" type="text" placeholder="🔍  Search user…" style="width:200px" oninput="filterTable('userTable',this.value)">
+    <select class="filter-input">
+      <option>All Status</option><option>Active</option><option>Blocked</option>
+    </select>
+    <button class="btn btn-primary btn-sm" onclick="addUser()">+ Add User</button>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table id="userTable">
+        <thead><tr><th>#</th><th>User</th><th>Phone</th><th>Books</th><th>Contributions</th><th>Loans</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>
+          <tr><td class="mono" style="color:var(--text3)">001</td><td><div class="user-row"><div class="user-avatar" style="background:#00b894">KA</div><div><div>Kofi Asante</div><div style="font-size:10px;color:var(--text3)">kofi@email.com</div></div></div></td><td>0244-XXX-001</td><td><span class="badge badge-info">3 Books</span></td><td class="mono">GH₵ 1,440</td><td class="mono">GH₵ 800</td><td><span class="badge badge-success"><span class="dot"></span> Active</span></td><td><div style="display:flex;gap:4px"><button class="btn btn-outline btn-xs" onclick="viewUser('Kofi Asante')">View</button><button class="btn btn-danger btn-xs" onclick="blockUser('Kofi Asante')">Block</button></div></td></tr>
+          <tr><td class="mono" style="color:var(--text3)">002</td><td><div class="user-row"><div class="user-avatar" style="background:#6c5ce7">AM</div><div><div>Ama Mensah</div><div style="font-size:10px;color:var(--text3)">ama@email.com</div></div></div></td><td>0244-XXX-002</td><td><span class="badge badge-info">2 Books</span></td><td class="mono">GH₵ 960</td><td class="mono">GH₵ 1,200</td><td><span class="badge badge-success"><span class="dot"></span> Active</span></td><td><div style="display:flex;gap:4px"><button class="btn btn-outline btn-xs" onclick="viewUser('Ama Mensah')">View</button><button class="btn btn-danger btn-xs" onclick="blockUser('Ama Mensah')">Block</button></div></td></tr>
+          <tr><td class="mono" style="color:var(--text3)">003</td><td><div class="user-row"><div class="user-avatar" style="background:#fd79a8">YO</div><div><div>Yaw Osei</div><div style="font-size:10px;color:var(--text3)">yaw@email.com</div></div></div></td><td>0244-XXX-003</td><td><span class="badge badge-info">1 Book</span></td><td class="mono">GH₵ 480</td><td class="mono">GH₵ 0</td><td><span class="badge badge-warn"><span class="dot"></span> Defaulter</span></td><td><div style="display:flex;gap:4px"><button class="btn btn-outline btn-xs" onclick="viewUser('Yaw Osei')">View</button><button class="btn btn-danger btn-xs" onclick="blockUser('Yaw Osei')">Block</button></div></td></tr>
+          <tr><td class="mono" style="color:var(--text3)">004</td><td><div class="user-row"><div class="user-avatar" style="background:#e17055">AB</div><div><div>Abena Boateng</div><div style="font-size:10px;color:var(--text3)">abena@email.com</div></div></div></td><td>0244-XXX-004</td><td><span class="badge badge-info">3 Books</span></td><td class="mono">GH₵ 1,320</td><td class="mono">GH₵ 500</td><td><span class="badge badge-success"><span class="dot"></span> Active</span></td><td><div style="display:flex;gap:4px"><button class="btn btn-outline btn-xs" onclick="viewUser('Abena Boateng')">View</button><button class="btn btn-danger btn-xs" onclick="blockUser('Abena Boateng')">Block</button></div></td></tr>
+          <tr><td class="mono" style="color:var(--text3)">005</td><td><div class="user-row"><div class="user-avatar" style="background:#0984e3">FK</div><div><div>Fiifi Kumi</div><div style="font-size:10px;color:var(--text3)">fiifi@email.com</div></div></div></td><td>0244-XXX-005</td><td><span class="badge badge-info">2 Books</span></td><td class="mono">GH₵ 720</td><td class="mono">GH₵ 1,500</td><td><span class="badge badge-danger"><span class="dot"></span> Blocked</span></td><td><div style="display:flex;gap:4px"><button class="btn btn-outline btn-xs" onclick="viewUser('Fiifi Kumi')">View</button><button class="btn btn-primary btn-xs" onclick="unblockUser('Fiifi Kumi')">Unblock</button></div></td></tr>
+          <tr><td class="mono" style="color:var(--text3)">006</td><td><div class="user-row"><div class="user-avatar" style="background:#a29bfe">KD</div><div><div>Kwame Darko</div><div style="font-size:10px;color:var(--text3)">kwame@email.com</div></div></div></td><td>0244-XXX-006</td><td><span class="badge badge-info">1 Book</span></td><td class="mono">GH₵ 120</td><td class="mono">GH₵ 0</td><td><span class="badge badge-success"><span class="dot"></span> Active</span></td><td><div style="display:flex;gap:4px"><button class="btn btn-outline btn-xs" onclick="viewUser('Kwame Darko')">View</button><button class="btn btn-danger btn-xs" onclick="blockUser('Kwame Darko')">Block</button></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE 3: BOOKS
+═══════════════════════════════════════════ -->
+<div class="page" id="page-books">
+  <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
+    <div class="stat-card"><div class="stat-label">Total Books</div><div class="stat-value" style="color:var(--info)">612</div></div>
+    <div class="stat-card"><div class="stat-label">Active</div><div class="stat-value" style="color:var(--success)">589</div></div>
+    <div class="stat-card"><div class="stat-label">Deactivated</div><div class="stat-value" style="color:var(--danger)">23</div></div>
+    <div class="stat-card"><div class="stat-label">Unassigned</div><div class="stat-value" style="color:var(--warn)">8</div></div>
+  </div>
+  <div class="filters">
+    <input class="filter-input" type="text" placeholder="🔍  Search book…" style="width:200px" oninput="filterTable('bookTable',this.value)">
+    <select class="filter-input"><option>All Status</option><option>Active</option><option>Deactivated</option></select>
+    <button class="btn btn-primary btn-sm" onclick="assignBook()">+ Assign Book</button>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table id="bookTable">
+        <thead><tr><th>Book ID</th><th>Owner</th><th>Contributions</th><th>Balance</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>
+          <tr><td class="mono" style="color:var(--accent)">#BK-001</td><td><div class="user-row"><div class="user-avatar" style="background:#00b894">KA</div>Kofi Asante</div></td><td class="mono">GH₵ 480</td><td class="mono" style="color:var(--success)">GH₵ 480</td><td><span class="badge badge-success">Active</span></td><td><div style="display:flex;gap:4px"><button class="btn btn-outline btn-xs" onclick="viewBook('#BK-001')">View</button><button class="btn btn-danger btn-xs" onclick="deactivateBook('#BK-001')">Deactivate</button></div></td></tr>
+          <tr><td class="mono" style="color:var(--accent)">#BK-002</td><td><div class="user-row"><div class="user-avatar" style="background:#00b894">KA</div>Kofi Asante</div></td><td class="mono">GH₵ 480</td><td class="mono" style="color:var(--success)">GH₵ 480</td><td><span class="badge badge-success">Active</span></td><td><div style="display:flex;gap:4px"><button class="btn btn-outline btn-xs" onclick="viewBook('#BK-002')">View</button><button class="btn btn-danger btn-xs" onclick="deactivateBook('#BK-002')">Deactivate</button></div></td></tr>
+          <tr><td class="mono" style="color:var(--accent)">#BK-003</td><td><div class="user-row"><div class="user-avatar" style="background:#6c5ce7">AM</div>Ama Mensah</div></td><td class="mono">GH₵ 480</td><td class="mono" style="color:var(--success)">GH₵ 480</td><td><span class="badge badge-success">Active</span></td><td><div style="display:flex;gap:4px"><button class="btn btn-outline btn-xs" onclick="viewBook('#BK-003')">View</button><button class="btn btn-danger btn-xs" onclick="deactivateBook('#BK-003')">Deactivate</button></div></td></tr>
+          <tr><td class="mono" style="color:var(--accent)">#BK-004</td><td><div class="user-row"><div class="user-avatar" style="background:#fd79a8">YO</div>Yaw Osei</div></td><td class="mono">GH₵ 240</td><td class="mono" style="color:var(--warn)">GH₵ 240</td><td><span class="badge badge-warn">Behind</span></td><td><div style="display:flex;gap:4px"><button class="btn btn-outline btn-xs" onclick="viewBook('#BK-004')">View</button><button class="btn btn-danger btn-xs" onclick="deactivateBook('#BK-004')">Deactivate</button></div></td></tr>
+          <tr><td class="mono" style="color:var(--accent)">#BK-005</td><td><div class="user-row"><div class="user-avatar" style="background:#e17055">AB</div>Abena Boateng</div></td><td class="mono">GH₵ 480</td><td class="mono" style="color:var(--success)">GH₵ 480</td><td><span class="badge badge-danger">Deactivated</span></td><td><div style="display:flex;gap:4px"><button class="btn btn-outline btn-xs" onclick="viewBook('#BK-005')">View</button><button class="btn btn-primary btn-xs" onclick="activateBook('#BK-005')">Activate</button></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE 4: CONTRIBUTIONS
+═══════════════════════════════════════════ -->
+<div class="page" id="page-contributions">
+  <div class="alert-banner warn">⚠️ <strong>7 users</strong> have missed contributions this week. <a onclick="showPage('defaulters', document.querySelector('[onclick*=defaulters]'))" style="cursor:pointer;text-decoration:underline;margin-left:4px">View Defaulters →</a></div>
+  <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
+    <div class="stat-card"><div class="stat-label">This Week</div><div class="stat-value" style="color:var(--success)">GH₵ 6,240</div></div>
+    <div class="stat-card"><div class="stat-label">Total Welfare</div><div class="stat-value" style="color:var(--accent)">GH₵ 4,820</div></div>
+    <div class="stat-card"><div class="stat-label">Penalties</div><div class="stat-value" style="color:var(--danger)">GH₵ 375</div></div>
+    <div class="stat-card"><div class="stat-label">Defaulters</div><div class="stat-value" style="color:var(--warn)">7</div></div>
+  </div>
+  <div class="filters">
+    <select class="filter-input"><option>All Weeks</option><option>Week 14</option><option>Week 13</option><option>Week 12</option></select>
+    <select class="filter-input"><option>All Users</option><option>Kofi Asante</option><option>Ama Mensah</option></select>
+    <select class="filter-input"><option>All Books</option><option>Book #BK-001</option><option>Book #BK-002</option></select>
+    <button class="btn btn-primary btn-sm" onclick="recordContrib()">+ Record</button>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Week</th><th>User</th><th>Book</th><th>Amount</th><th>Welfare</th><th>Date</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td><span class="badge badge-neutral">Wk 14</span></td><td><div class="user-row"><div class="user-avatar" style="background:#00b894">KA</div>Kofi Asante</div></td><td class="mono">#BK-001</td><td class="mono">GH₵ 120</td><td class="mono">GH₵ 12</td><td style="color:var(--text3)">Apr 3, 2026</td><td><span class="badge badge-success">Paid</span></td></tr>
+          <tr><td><span class="badge badge-neutral">Wk 14</span></td><td><div class="user-row"><div class="user-avatar" style="background:#6c5ce7">AM</div>Ama Mensah</div></td><td class="mono">#BK-003</td><td class="mono">GH₵ 120</td><td class="mono">GH₵ 12</td><td style="color:var(--text3)">Apr 3, 2026</td><td><span class="badge badge-success">Paid</span></td></tr>
+          <tr><td><span class="badge badge-neutral">Wk 14</span></td><td><div class="user-row"><div class="user-avatar" style="background:#fd79a8">YO</div>Yaw Osei</div></td><td class="mono">#BK-004</td><td class="mono">GH₵ 120</td><td class="mono">GH₵ 12</td><td style="color:var(--text3)">—</td><td><span class="badge badge-danger">Missed</span></td></tr>
+          <tr><td><span class="badge badge-neutral">Wk 14</span></td><td><div class="user-row"><div class="user-avatar" style="background:#e17055">AB</div>Abena Boateng</div></td><td class="mono">#BK-005</td><td class="mono">GH₵ 120</td><td class="mono">GH₵ 12</td><td style="color:var(--text3)">Apr 2, 2026</td><td><span class="badge badge-success">Paid</span></td></tr>
+          <tr><td><span class="badge badge-neutral">Wk 13</span></td><td><div class="user-row"><div class="user-avatar" style="background:#00b894">KA</div>Kofi Asante</div></td><td class="mono">#BK-001</td><td class="mono">GH₵ 120</td><td class="mono">GH₵ 12</td><td style="color:var(--text3)">Mar 27, 2026</td><td><span class="badge badge-success">Paid</span></td></tr>
+          <tr><td><span class="badge badge-neutral">Wk 13</span></td><td><div class="user-row"><div class="user-avatar" style="background:#0984e3">FK</div>Fiifi Kumi</div></td><td class="mono">#BK-009</td><td class="mono">GH₵ 120</td><td class="mono">GH₵ 12</td><td style="color:var(--text3)">—</td><td><span class="badge badge-danger">Missed</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE 5: LOANS
+═══════════════════════════════════════════ -->
+<div class="page" id="page-loans">
+  <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
+    <div class="stat-card"><div class="stat-label">Total Disbursed</div><div class="stat-value" style="color:var(--purple)">GH₵ 91.5K</div></div>
+    <div class="stat-card"><div class="stat-label">Active Loans</div><div class="stat-value" style="color:var(--success)">34</div></div>
+    <div class="stat-card"><div class="stat-label">Overdue</div><div class="stat-value" style="color:var(--danger)">5</div></div>
+    <div class="stat-card"><div class="stat-label">Interest Earned</div><div class="stat-value" style="color:var(--warn)">GH₵ 7.3K</div></div>
+  </div>
+  <div class="alert-banner danger">🔴 <strong>4 loan requests</strong> are awaiting your approval.</div>
+  <div class="filters">
+    <select class="filter-input"><option>All Loans</option><option>Pending</option><option>Active</option><option>Overdue</option><option>Paid</option></select>
+    <input class="filter-input" type="text" placeholder="Search user…" style="width:180px">
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Loan ID</th><th>Borrower</th><th>Amount</th><th>Interest</th><th>Due Date</th><th>Repaid</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>
+          <tr><td class="mono" style="color:var(--accent)">#LN-2024</td><td><div class="user-row"><div class="user-avatar" style="background:#6c5ce7">AM</div>Ama Mensah</div></td><td class="mono">GH₵ 1,200</td><td class="mono">GH₵ 120</td><td style="color:var(--text3)">Jun 3, 2026</td><td><div style="width:80px"><div class="progress-bar"><div class="progress-fill" style="width:40%;background:var(--info)"></div></div><div style="font-size:10px;color:var(--text3);margin-top:2px">40%</div></div></td><td><span class="badge badge-info">Active</span></td><td><button class="btn btn-outline btn-xs" onclick="viewLoan('#LN-2024')">Details</button></td></tr>
+          <tr><td class="mono" style="color:var(--accent)">#LN-2023</td><td><div class="user-row"><div class="user-avatar" style="background:#e17055">AB</div>Abena Boateng</div></td><td class="mono">GH₵ 500</td><td class="mono">GH₵ 50</td><td style="color:var(--text3)">May 1, 2026</td><td><div style="width:80px"><div class="progress-bar"><div class="progress-fill" style="width:100%;background:var(--success)"></div></div><div style="font-size:10px;color:var(--success);margin-top:2px">Fully Paid</div></div></td><td><span class="badge badge-success">Paid</span></td><td><button class="btn btn-outline btn-xs" onclick="viewLoan('#LN-2023')">Details</button></td></tr>
+          <tr><td class="mono" style="color:var(--accent)">#LN-2025</td><td><div class="user-row"><div class="user-avatar" style="background:#fd79a8">YO</div>Yaw Osei</div></td><td class="mono">GH₵ 800</td><td class="mono">GH₵ 80</td><td style="color:var(--danger)">Mar 15, 2026</td><td><div style="width:80px"><div class="progress-bar"><div class="progress-fill" style="width:0%;background:var(--danger)"></div></div><div style="font-size:10px;color:var(--danger);margin-top:2px">0% — Overdue</div></div></td><td><span class="badge badge-danger">Overdue</span></td><td><button class="btn btn-danger btn-xs" onclick="markOverdue('#LN-2025')">Remind</button></td></tr>
+          <tr><td class="mono" style="color:var(--warn)">#LN-2026</td><td><div class="user-row"><div class="user-avatar" style="background:#a29bfe">KD</div>Kwame Darko</div></td><td class="mono">GH₵ 2,000</td><td class="mono">GH₵ 200</td><td style="color:var(--text3)">—</td><td>—</td><td><span class="badge badge-warn">Pending</span></td><td><div style="display:flex;gap:4px"><button class="btn btn-primary btn-xs" onclick="approveLoan('#LN-2026','Kwame Darko')">Approve</button><button class="btn btn-danger btn-xs" onclick="rejectLoan('#LN-2026','Kwame Darko')">Reject</button></div></td></tr>
+          <tr><td class="mono" style="color:var(--warn)">#LN-2027</td><td><div class="user-row"><div class="user-avatar" style="background:#00b894">KA</div>Kofi Asante</div></td><td class="mono">GH₵ 3,500</td><td class="mono">GH₵ 350</td><td style="color:var(--text3)">—</td><td>—</td><td><span class="badge badge-warn">Pending</span></td><td><div style="display:flex;gap:4px"><button class="btn btn-primary btn-xs" onclick="approveLoan('#LN-2027','Kofi Asante')">Approve</button><button class="btn btn-danger btn-xs" onclick="rejectLoan('#LN-2027','Kofi Asante')">Reject</button></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE 6: PAYMENTS
+═══════════════════════════════════════════ -->
+<div class="page" id="page-payments">
+  <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px">
+    <div class="stat-card"><div class="stat-label">Total Volume</div><div class="stat-value" style="color:var(--accent)">GH₵ 139.7K</div></div>
+    <div class="stat-card"><div class="stat-label">This Month</div><div class="stat-value" style="color:var(--success)">GH₵ 12,480</div></div>
+    <div class="stat-card"><div class="stat-label">Transactions</div><div class="stat-value">1,247</div></div>
+  </div>
+  <div class="filters">
+    <input class="filter-input" type="date" value="2026-04-01">
+    <input class="filter-input" type="date" value="2026-04-03">
+    <select class="filter-input"><option>All Types</option><option>Contribution</option><option>Loan</option><option>Penalty</option><option>Repayment</option></select>
+    <select class="filter-input"><option>All Methods</option><option>MoMo</option><option>Cash</option><option>Bank Transfer</option></select>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Txn ID</th><th>User</th><th>Type</th><th>Amount</th><th>Method</th><th>Date</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td class="mono" style="color:var(--text3);font-size:10px">TXN-8821</td><td><div class="user-row"><div class="user-avatar" style="background:#00b894">KA</div>Kofi Asante</div></td><td><span class="badge badge-info">Contribution</span></td><td class="mono">GH₵ 120</td><td><span class="badge badge-neutral">📱 MoMo</span></td><td style="color:var(--text3)">03 Apr 2026 09:14</td><td><span class="badge badge-success">Success</span></td></tr>
+          <tr><td class="mono" style="color:var(--text3);font-size:10px">TXN-8820</td><td><div class="user-row"><div class="user-avatar" style="background:#0984e3">FK</div>Fiifi Kumi</div></td><td><span class="badge badge-purple">Repayment</span></td><td class="mono">GH₵ 450</td><td><span class="badge badge-neutral">📱 MoMo</span></td><td style="color:var(--text3)">03 Apr 2026 08:30</td><td><span class="badge badge-success">Success</span></td></tr>
+          <tr><td class="mono" style="color:var(--text3);font-size:10px">TXN-8819</td><td><div class="user-row"><div class="user-avatar" style="background:#e17055">AB</div>Abena Boateng</div></td><td><span class="badge badge-danger">Penalty</span></td><td class="mono">GH₵ 25</td><td><span class="badge badge-neutral">💵 Cash</span></td><td style="color:var(--text3)">02 Apr 2026 17:45</td><td><span class="badge badge-success">Success</span></td></tr>
+          <tr><td class="mono" style="color:var(--text3);font-size:10px">TXN-8818</td><td><div class="user-row"><div class="user-avatar" style="background:#a29bfe">KD</div>Kwame Darko</div></td><td><span class="badge badge-info">Contribution</span></td><td class="mono">GH₵ 120</td><td><span class="badge badge-neutral">🏦 Bank</span></td><td style="color:var(--text3)">02 Apr 2026 14:00</td><td><span class="badge badge-success">Success</span></td></tr>
+          <tr><td class="mono" style="color:var(--text3);font-size:10px">TXN-8817</td><td><div class="user-row"><div class="user-avatar" style="background:#6c5ce7">AM</div>Ama Mensah</div></td><td><span class="badge badge-purple">Loan Disbursed</span></td><td class="mono">GH₵ 1,200</td><td><span class="badge badge-neutral">📱 MoMo</span></td><td style="color:var(--text3)">01 Apr 2026 11:20</td><td><span class="badge badge-success">Success</span></td></tr>
+          <tr><td class="mono" style="color:var(--text3);font-size:10px">TXN-8816</td><td><div class="user-row"><div class="user-avatar" style="background:#fd79a8">YO</div>Yaw Osei</div></td><td><span class="badge badge-info">Contribution</span></td><td class="mono">GH₵ 120</td><td><span class="badge badge-neutral">📱 MoMo</span></td><td style="color:var(--text3)">01 Apr 2026 09:05</td><td><span class="badge badge-danger">Failed</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE 7: DEFAULTERS
+═══════════════════════════════════════════ -->
+<div class="page" id="page-defaulters">
+  <div class="alert-banner danger">🔥 <strong>7 active defaulters</strong> detected this week. Review and take action.</div>
+  <div class="grid-2" style="margin-bottom:16px">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Missed Contributions</div><span class="badge badge-danger">4 users</span></div>
+      <table>
+        <thead><tr><th>User</th><th>Weeks Missed</th><th>Amount Due</th><th>Actions</th></tr></thead>
+        <tbody>
+          <tr><td><div class="user-row"><div class="user-avatar" style="background:#fd79a8">YO</div>Yaw Osei</div></td><td><span class="badge badge-danger">3 weeks</span></td><td class="mono">GH₵ 360</td><td><div style="display:flex;gap:4px"><button class="btn btn-warn btn-xs" style="background:var(--warn-bg);color:var(--warn);border:1px solid rgba(210,153,34,.2)" onclick="sendReminder('Yaw Osei')">Remind</button><button class="btn btn-danger btn-xs" onclick="applyPenalty('Yaw Osei')">Penalise</button></div></td></tr>
+          <tr><td><div class="user-row"><div class="user-avatar" style="background:#0984e3">FK</div>Fiifi Kumi</div></td><td><span class="badge badge-warn">2 weeks</span></td><td class="mono">GH₵ 240</td><td><div style="display:flex;gap:4px"><button class="btn btn-warn btn-xs" style="background:var(--warn-bg);color:var(--warn);border:1px solid rgba(210,153,34,.2)" onclick="sendReminder('Fiifi Kumi')">Remind</button><button class="btn btn-danger btn-xs" onclick="applyPenalty('Fiifi Kumi')">Penalise</button></div></td></tr>
+          <tr><td><div class="user-row"><div class="user-avatar" style="background:#a29bfe">KD</div>Kwame Darko</div></td><td><span class="badge badge-warn">1 week</span></td><td class="mono">GH₵ 120</td><td><div style="display:flex;gap:4px"><button class="btn btn-warn btn-xs" style="background:var(--warn-bg);color:var(--warn);border:1px solid rgba(210,153,34,.2)" onclick="sendReminder('Kwame Darko')">Remind</button><button class="btn btn-danger btn-xs" onclick="applyPenalty('Kwame Darko')">Penalise</button></div></td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+        <button class="btn btn-primary btn-sm" onclick="sendBulkReminders()">📤 Send Bulk Reminders</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Overdue Loans</div><span class="badge badge-danger">3 users</span></div>
+      <table>
+        <thead><tr><th>User</th><th>Loan ID</th><th>Overdue By</th><th>Actions</th></tr></thead>
+        <tbody>
+          <tr><td><div class="user-row"><div class="user-avatar" style="background:#fd79a8">YO</div>Yaw Osei</div></td><td class="mono">#LN-2025</td><td><span class="badge badge-danger">19 days</span></td><td><button class="btn btn-danger btn-xs" onclick="sendReminder('Yaw Osei')">Remind</button></td></tr>
+          <tr><td><div class="user-row"><div class="user-avatar" style="background:#e17055">AB</div>Abena Boateng</div></td><td class="mono">#LN-2022</td><td><span class="badge badge-warn">7 days</span></td><td><button class="btn btn-danger btn-xs" onclick="sendReminder('Abena Boateng')">Remind</button></td></tr>
+          <tr><td><div class="user-row"><div class="user-avatar" style="background:#00b894">KA</div>Kofi Asante</div></td><td class="mono">#LN-2020</td><td><span class="badge badge-warn">3 days</span></td><td><button class="btn btn-danger btn-xs" onclick="sendReminder('Kofi Asante')">Remind</button></td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+        <button class="btn btn-primary btn-sm" onclick="sendBulkReminders()">📤 Send All Loan Reminders</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE 8: REPORTS
+═══════════════════════════════════════════ -->
+<div class="page" id="page-reports">
+  <div class="grid-2" style="margin-bottom:16px">
+    <div class="card">
+      <div class="card-header"><div><div class="card-title">Year-End Summary</div><div class="card-sub">FY 2025 — Jan to Dec</div></div></div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
+        <div class="setting-row" style="padding:8px 0">
+          <div class="setting-info"><div class="setting-name">Total Welfare Collected</div></div>
+          <div class="mono" style="font-size:var(--fs-lg);color:var(--accent)">GH₵ 57,840</div>
+        </div>
+        <div class="setting-row" style="padding:8px 0">
+          <div class="setting-info"><div class="setting-name">Total Penalties</div></div>
+          <div class="mono" style="font-size:var(--fs-lg);color:var(--danger)">GH₵ 4,500</div>
+        </div>
+        <div class="setting-row" style="padding:8px 0">
+          <div class="setting-info"><div class="setting-name">Total Loan Interest</div></div>
+          <div class="mono" style="font-size:var(--fs-lg);color:var(--warn)">GH₵ 7,320</div>
+        </div>
+        <div style="padding:10px;background:var(--accent-dim);border:1px solid var(--accent);border-radius:var(--r);display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:600">Total Distributable Profit</div>
+          <div class="mono" style="font-size:var(--fs-xl);font-weight:700;color:var(--accent)">GH₵ 69,660</div>
+        </div>
+      </div>
+      <div style="font-size:var(--fs-sm);color:var(--text3);margin-bottom:8px">Profit per user (248 members):</div>
+      <div class="mono" style="font-size:var(--fs-xl);color:var(--success);font-weight:600">GH₵ 280.89 / user</div>
+      <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" onclick="generatePDF()">📄 Generate Payout PDF</button>
+        <button class="btn btn-outline btn-sm" onclick="exportCSV()">📊 Export CSV</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Monthly Trend</div></div>
+      <div class="chart-container" style="height:220px">
+        <canvas id="reportChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><div class="card-title">Per-User Payout Table</div><button class="btn btn-primary btn-sm" onclick="generatePDF()">📄 Export PDF</button></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>User</th><th>Books</th><th>Contributions</th><th>Penalties Paid</th><th>Payout Share</th></tr></thead>
+        <tbody>
+          <tr><td><div class="user-row"><div class="user-avatar" style="background:#00b894">KA</div>Kofi Asante</div></td><td>3</td><td class="mono">GH₵ 1,440</td><td class="mono">GH₵ 0</td><td class="mono" style="color:var(--success)">GH₵ 842.67</td></tr>
+          <tr><td><div class="user-row"><div class="user-avatar" style="background:#6c5ce7">AM</div>Ama Mensah</div></td><td>2</td><td class="mono">GH₵ 960</td><td class="mono">GH₵ 0</td><td class="mono" style="color:var(--success)">GH₵ 561.78</td></tr>
+          <tr><td><div class="user-row"><div class="user-avatar" style="background:#fd79a8">YO</div>Yaw Osei</div></td><td>1</td><td class="mono">GH₵ 240</td><td class="mono" style="color:var(--danger)">GH₵ 75</td><td class="mono" style="color:var(--success)">GH₵ 190.44</td></tr>
+          <tr><td><div class="user-row"><div class="user-avatar" style="background:#e17055">AB</div>Abena Boateng</div></td><td>3</td><td class="mono">GH₵ 1,320</td><td class="mono" style="color:var(--danger)">GH₵ 25</td><td class="mono" style="color:var(--success)">GH₵ 810.23</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE 9: NOTIFICATIONS
+═══════════════════════════════════════════ -->
+<div class="page" id="page-notifications">
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Send Notification</div></div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div>
+          <div style="font-size:var(--fs-sm);color:var(--text3);margin-bottom:5px">Recipients</div>
+          <select class="filter-input" style="width:100%">
+            <option>All Users (248)</option>
+            <option>Defaulters Only (7)</option>
+            <option>Loan Overdue (3)</option>
+            <option>Active Users</option>
+            <option>Custom Selection</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:var(--fs-sm);color:var(--text3);margin-bottom:5px">Channel</div>
+          <div style="display:flex;gap:8px">
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:var(--fs-sm)"><input type="radio" name="channel" checked> 📱 SMS</label>
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:var(--fs-sm)"><input type="radio" name="channel"> 📧 Email</label>
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:var(--fs-sm)"><input type="radio" name="channel"> 🔔 Push</label>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:var(--fs-sm);color:var(--text3);margin-bottom:5px">Message Template</div>
+          <select class="filter-input" style="width:100%;margin-bottom:8px" onchange="setTemplate(this.value)">
+            <option value="">Custom message…</option>
+            <option value="weekly">Weekly Contribution Reminder</option>
+            <option value="overdue">Overdue Loan Warning</option>
+            <option value="penalty">Penalty Applied Notice</option>
+            <option value="payout">Year-End Payout Info</option>
+          </select>
+          <textarea id="msgArea" class="filter-input" rows="4" style="width:100%;resize:vertical" placeholder="Type your message here…"></textarea>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="sendBulkSMS()">📤 Send Now</button>
+          <button class="btn btn-outline" onclick="scheduleMsg()">🕐 Schedule</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Recent Notifications</div></div>
+      <div>
+        <div class="notif-item">
+          <div class="notif-icon-wrap" style="background:var(--danger-bg)">⚠️</div>
+          <div class="notif-content">
+            <div class="notif-title">Contribution Reminder — Bulk SMS</div>
+            <div class="notif-msg">Sent to 7 defaulters: "Dear member, you have missed your weekly contribution…"</div>
+            <div class="notif-time">Today, 08:00 • 7 recipients • ✅ All delivered</div>
+          </div>
+        </div>
+        <div class="notif-item">
+          <div class="notif-icon-wrap" style="background:var(--warn-bg)">🏦</div>
+          <div class="notif-content">
+            <div class="notif-title">Loan Overdue Alert</div>
+            <div class="notif-msg">Sent to Yaw Osei: "Your loan repayment is now 19 days overdue…"</div>
+            <div class="notif-time">Yesterday, 09:00 • 1 recipient • ✅ Delivered</div>
+          </div>
+        </div>
+        <div class="notif-item">
+          <div class="notif-icon-wrap" style="background:var(--success-bg)">📣</div>
+          <div class="notif-content">
+            <div class="notif-title">Weekly Contribution Reminder</div>
+            <div class="notif-msg">General reminder sent to all 248 members for Week 14.</div>
+            <div class="notif-time">Mon Apr 1, 07:00 • 248 recipients • ✅ 241 delivered</div>
+          </div>
+        </div>
+        <div class="notif-item">
+          <div class="notif-icon-wrap" style="background:var(--info-bg)">💰</div>
+          <div class="notif-content">
+            <div class="notif-title">Loan Approval Notice</div>
+            <div class="notif-msg">Notified Ama Mensah: "Your loan of GH₵ 1,200 has been approved…"</div>
+            <div class="notif-time">Apr 1, 11:25 • 1 recipient • ✅ Delivered</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAGE 10: SETTINGS
+═══════════════════════════════════════════ -->
+<div class="page" id="page-settings">
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Contribution Rules</div></div>
+      <div>
+        <div class="setting-row">
+          <div class="setting-info"><div class="setting-name">Weekly Contribution Amount</div><div class="setting-desc">Fixed amount per book per week</div></div>
+          <div class="setting-control"><span style="font-size:var(--fs-sm);color:var(--text3)">GH₵</span><input class="setting-input" type="number" value="120"></div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info"><div class="setting-name">Welfare Percentage</div><div class="setting-desc">Deducted from each contribution</div></div>
+          <div class="setting-control"><input class="setting-input" type="number" value="10"><span style="font-size:var(--fs-sm);color:var(--text3)">%</span></div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info"><div class="setting-name">Penalty Percentage</div><div class="setting-desc">Applied on missed contributions</div></div>
+          <div class="setting-control"><input class="setting-input" type="number" value="5"><span style="font-size:var(--fs-sm);color:var(--text3)">%</span></div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info"><div class="setting-name">Max Books Per User</div><div class="setting-desc">Limit on books assigned per member</div></div>
+          <div class="setting-control"><input class="setting-input" type="number" value="3"></div>
+        </div>
+      </div>
+      <div style="margin-top:12px"><button class="btn btn-primary btn-sm" onclick="saveSettings()">Save Changes</button></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Loan Settings</div></div>
+      <div>
+        <div class="setting-row">
+          <div class="setting-info"><div class="setting-name">Loan Interest Rate</div><div class="setting-desc">Monthly interest on approved loans</div></div>
+          <div class="setting-control"><input class="setting-input" type="number" value="10"><span style="font-size:var(--fs-sm);color:var(--text3)">%</span></div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info"><div class="setting-name">Max Loan Amount</div><div class="setting-desc">Cap per loan application</div></div>
+          <div class="setting-control"><span style="font-size:var(--fs-sm);color:var(--text3)">GH₵</span><input class="setting-input" type="number" value="5000"></div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info"><div class="setting-name">Max Repayment Period</div><div class="setting-desc">Maximum months allowed</div></div>
+          <div class="setting-control"><input class="setting-input" type="number" value="6"><span style="font-size:var(--fs-sm);color:var(--text3)">mo</span></div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info"><div class="setting-name">Auto-Reject After</div><div class="setting-desc">Days before auto-rejecting pending loan</div></div>
+          <div class="setting-control"><input class="setting-input" type="number" value="7"><span style="font-size:var(--fs-sm);color:var(--text3)">days</span></div>
+        </div>
+      </div>
+      <div style="margin-top:12px"><button class="btn btn-primary btn-sm" onclick="saveSettings()">Save Changes</button></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Automation & Alerts</div></div>
+      <div>
+        <div class="setting-row">
+          <div class="setting-info"><div class="setting-name">Auto-send weekly reminders</div><div class="setting-desc">Send SMS to all members every Monday</div></div>
+          <button class="toggle on" onclick="toggleBtn(this)"></button>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info"><div class="setting-name">Auto-detect defaulters</div><div class="setting-desc">Flag missed contributions automatically</div></div>
+          <button class="toggle on" onclick="toggleBtn(this)"></button>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info"><div class="setting-name">Auto-apply penalties</div><div class="setting-desc">Apply penalty after 2 missed weeks</div></div>
+          <button class="toggle off" onclick="toggleBtn(this)"></button>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info"><div class="setting-name">Overdue loan alerts</div><div class="setting-desc">Alert admin on overdue loans daily</div></div>
+          <button class="toggle on" onclick="toggleBtn(this)"></button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Admin Account</div></div>
+      <div class="setting-row">
+        <div class="setting-info"><div class="setting-name">Admin Name</div></div>
+        <input class="setting-input" type="text" value="Super Admin" style="width:140px;text-align:left">
+      </div>
+      <div class="setting-row">
+        <div class="setting-info"><div class="setting-name">Email</div></div>
+        <input class="setting-input" type="email" value="admin@coop.gh" style="width:160px;text-align:left">
+      </div>
+      <div class="setting-row">
+        <div class="setting-info"><div class="setting-name">Change Password</div></div>
+        <button class="btn btn-outline btn-sm" onclick="changePassword()">Update</button>
+      </div>
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;gap:8px">
+        <button class="btn btn-primary btn-sm" onclick="saveSettings()">Save Profile</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmLogout()">Logout</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+// ── PAGE NAVIGATION ──────────────────────────────────────
+const pageTitles = {
+  dashboard: ['Dashboard','Overview & Key Metrics'],
+  users: ['User Management','View · Search · Block'],
+  books: ['Book Management','Assign · Deactivate · Monitor'],
+  contributions: ['Contributions','Weekly Collection Tracker'],
+  loans: ['Loan Management','Approve · Track · Recover'],
+  payments: ['Payments & Transactions','Audit Trail'],
+  defaulters: ['Defaulters','Missed Contributions & Overdue Loans'],
+  reports: ['Reports & Profit Sharing','Year-End Analytics'],
+  notifications: ['Notifications','SMS & Alerts Panel'],
+  settings: ['Settings','System Configuration']
+};
+
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  if (el) el.classList.add('active');
+  const t = pageTitles[id] || [id, ''];
+  document.getElementById('topbar-title').textContent = t[0];
+  document.getElementById('topbar-sub').textContent = t[1];
+  closeSidebar();
+  if (id === 'dashboard') initCharts();
+  if (id === 'reports') initReportChart();
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('show');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+}
+
+// ── TABLE FILTER ─────────────────────────────────────────
+function filterTable(tableId, q) {
+  const rows = document.querySelectorAll('#' + tableId + ' tbody tr');
+  rows.forEach(r => {
+    r.style.display = r.textContent.toLowerCase().includes(q.toLowerCase()) ? '' : 'none';
+  });
+}
+
+// ── TOGGLE ───────────────────────────────────────────────
+function toggleBtn(btn) {
+  btn.classList.toggle('on'); btn.classList.toggle('off');
+}
+
+// ── USER ACTIONS ─────────────────────────────────────────
+function viewUser(name) {
+  Swal.fire({
+    background: '#161b22', color: '#e6edf3',
+    title: `<span style="font-size:15px">${name}</span>`,
+    html: `<div style="text-align:left;font-size:12px;line-height:1.8">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px 0">
+        <div style="background:#1c2230;padding:10px;border-radius:8px"><div style="color:#8b949e;font-size:10px">Books Owned</div><div style="font-size:16px;font-weight:600;color:#00d4a8">3</div></div>
+        <div style="background:#1c2230;padding:10px;border-radius:8px"><div style="color:#8b949e;font-size:10px">Total Contributions</div><div style="font-size:16px;font-weight:600;color:#3fb950">GH₵ 1,440</div></div>
+        <div style="background:#1c2230;padding:10px;border-radius:8px"><div style="color:#8b949e;font-size:10px">Active Loans</div><div style="font-size:16px;font-weight:600;color:#bc8cff">1</div></div>
+        <div style="background:#1c2230;padding:10px;border-radius:8px"><div style="color:#8b949e;font-size:10px">Penalties Paid</div><div style="font-size:16px;font-weight:600;color:#f85149">GH₵ 0</div></div>
+      </div>
+      <div style="margin-top:8px;padding:8px;background:#1c2230;border-radius:8px;color:#8b949e">Last activity: <strong style="color:#e6edf3">Apr 3, 2026 09:14</strong></div>
+    </div>`,
+    confirmButtonText: 'Close',
+    confirmButtonColor: '#00d4a8',
+    showCancelButton: true,
+    cancelButtonText: 'Block User',
+    cancelButtonColor: '#f85149',
+  });
+}
+
+function blockUser(name) {
+  Swal.fire({
+    background: '#161b22', color: '#e6edf3',
+    title: 'Block User?',
+    html: `<span style="font-size:12px">Are you sure you want to block <strong>${name}</strong>? They will not be able to log in.</span>`,
+    icon: 'warning', iconColor: '#d29922',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, Block',
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: '#f85149',
+    cancelButtonColor: '#21262d',
+  }).then(r => {
+    if (r.isConfirmed) Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'success', iconColor:'#3fb950', title:'Blocked', text:`${name} has been blocked.`, confirmButtonColor:'#00d4a8', timer:2000, timerProgressBar:true });
+  });
+}
+
+function unblockUser(name) {
+  Swal.fire({
+    background: '#161b22', color: '#e6edf3',
+    icon: 'question', iconColor: '#00d4a8',
+    title: 'Unblock User?',
+    html: `<span style="font-size:12px">Restore access for <strong>${name}</strong>?</span>`,
+    showCancelButton: true, confirmButtonText: 'Yes, Unblock', confirmButtonColor: '#00d4a8', cancelButtonColor: '#21262d',
+  }).then(r => {
+    if (r.isConfirmed) Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'success', iconColor:'#3fb950', title:'Unblocked', text:`${name} can now log in.`, confirmButtonColor:'#00d4a8', timer:2000, timerProgressBar:true });
+  });
+}
+
+function addUser() {
+  Swal.fire({
+    background: '#161b22', color: '#e6edf3',
+    title: '<span style="font-size:15px">Add New User</span>',
+    html: `<div style="display:flex;flex-direction:column;gap:8px;text-align:left">
+      <input id="swal-name" class="swal2-input" placeholder="Full Name" style="background:#1c2230;border:1px solid rgba(255,255,255,0.1);color:#e6edf3;font-size:12px">
+      <input id="swal-phone" class="swal2-input" placeholder="Phone Number" style="background:#1c2230;border:1px solid rgba(255,255,255,0.1);color:#e6edf3;font-size:12px">
+      <input id="swal-email" class="swal2-input" placeholder="Email Address" style="background:#1c2230;border:1px solid rgba(255,255,255,0.1);color:#e6edf3;font-size:12px">
+    </div>`,
+    confirmButtonText: 'Create User', confirmButtonColor: '#00d4a8',
+    showCancelButton: true, cancelButtonColor: '#21262d',
+    preConfirm: () => {
+      const name = document.getElementById('swal-name').value;
+      if (!name) { Swal.showValidationMessage('Please enter a name'); return false; }
+      return name;
+    }
+  }).then(r => {
+    if (r.isConfirmed) Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'success', iconColor:'#3fb950', title:'User Created!', text:`${r.value} has been added.`, confirmButtonColor:'#00d4a8', timer:2500, timerProgressBar:true });
+  });
+}
+
+// ── BOOK ACTIONS ─────────────────────────────────────────
+function viewBook(id) {
+  Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'info', iconColor:'#388bfd', title:`Book ${id}`, html:`<span style="font-size:12px">Total Contributions: <strong>GH₵ 480</strong> · Status: Active · Weeks: 4</span>`, confirmButtonColor:'#00d4a8' });
+}
+function deactivateBook(id) {
+  Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'warning', iconColor:'#d29922', title:`Deactivate ${id}?`, html:`<span style="font-size:12px">This will stop future contributions to this book.</span>`, showCancelButton:true, confirmButtonText:'Deactivate', confirmButtonColor:'#f85149', cancelButtonColor:'#21262d' }).then(r => { if(r.isConfirmed) Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'success', iconColor:'#3fb950', title:'Deactivated', confirmButtonColor:'#00d4a8', timer:2000, timerProgressBar:true }); });
+}
+function activateBook(id) {
+  Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'success', iconColor:'#00d4a8', title:`Activate ${id}?`, showCancelButton:true, confirmButtonText:'Activate', confirmButtonColor:'#00d4a8', cancelButtonColor:'#21262d' }).then(r => { if(r.isConfirmed) Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'success', iconColor:'#3fb950', title:'Activated!', confirmButtonColor:'#00d4a8', timer:2000, timerProgressBar:true }); });
+}
+function assignBook() {
+  Swal.fire({ background:'#161b22', color:'#e6edf3', title:'Assign Book', html:`<select class="swal2-select" style="background:#1c2230;border:1px solid rgba(255,255,255,0.1);color:#e6edf3;font-size:12px"><option>Kofi Asante</option><option>Ama Mensah</option><option>Kwame Darko</option></select>`, confirmButtonText:'Assign', confirmButtonColor:'#00d4a8', showCancelButton:true, cancelButtonColor:'#21262d' }).then(r => { if(r.isConfirmed) Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'success', iconColor:'#3fb950', title:'Book Assigned!', confirmButtonColor:'#00d4a8', timer:2000, timerProgressBar:true }); });
+}
+
+// ── CONTRIBUTION ACTIONS ──────────────────────────────────
+function recordContrib() {
+  Swal.fire({ background:'#161b22', color:'#e6edf3', title:'Record Contribution', html:`<div style="display:flex;flex-direction:column;gap:8px"><select class="swal2-select" style="background:#1c2230;border:1px solid rgba(255,255,255,0.1);color:#e6edf3;font-size:12px"><option>Kofi Asante — BK-001</option><option>Ama Mensah — BK-003</option></select><input class="swal2-input" value="120" style="background:#1c2230;border:1px solid rgba(255,255,255,0.1);color:#e6edf3;font-size:12px"></div>`, confirmButtonText:'Record', confirmButtonColor:'#00d4a8', showCancelButton:true, cancelButtonColor:'#21262d' }).then(r => { if(r.isConfirmed) Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'success', iconColor:'#3fb950', title:'Contribution Recorded!', confirmButtonColor:'#00d4a8', timer:2000, timerProgressBar:true }); });
+}
+
+// ── LOAN ACTIONS ──────────────────────────────────────────
+function viewLoan(id) {
+  Swal.fire({ background:'#161b22', color:'#e6edf3', title:`Loan ${id}`, html:`<div style="text-align:left;font-size:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px"><div style="background:#1c2230;padding:10px;border-radius:8px"><div style="color:#8b949e;font-size:10px">Principal</div><div style="color:#bc8cff;font-weight:600">GH₵ 1,200</div></div><div style="background:#1c2230;padding:10px;border-radius:8px"><div style="color:#8b949e;font-size:10px">Interest (10%)</div><div style="color:#d29922;font-weight:600">GH₵ 120</div></div><div style="background:#1c2230;padding:10px;border-radius:8px"><div style="color:#8b949e;font-size:10px">Total Due</div><div style="color:#e6edf3;font-weight:600">GH₵ 1,320</div></div><div style="background:#1c2230;padding:10px;border-radius:8px"><div style="color:#8b949e;font-size:10px">Repaid</div><div style="color:#3fb950;font-weight:600">GH₵ 528</div></div></div>`, confirmButtonColor:'#00d4a8' });
+}
+function approveLoan(id, name) {
+  Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'question', iconColor:'#00d4a8', title:`Approve ${id}?`, html:`<span style="font-size:12px">Approve loan for <strong>${name}</strong>?</span>`, showCancelButton:true, confirmButtonText:'Approve ✓', confirmButtonColor:'#00d4a8', cancelButtonColor:'#21262d' }).then(r => { if(r.isConfirmed) Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'success', iconColor:'#3fb950', title:'Loan Approved!', text:`Funds will be disbursed to ${name}.`, confirmButtonColor:'#00d4a8', timer:3000, timerProgressBar:true }); });
+}
+function rejectLoan(id, name) {
+  Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'warning', iconColor:'#f85149', title:`Reject ${id}?`, input:'textarea', inputPlaceholder:'Reason for rejection…', inputAttributes:{style:'background:#1c2230;color:#e6edf3;border:1px solid rgba(255,255,255,0.1);font-size:12px'}, showCancelButton:true, confirmButtonText:'Reject', confirmButtonColor:'#f85149', cancelButtonColor:'#21262d' }).then(r => { if(r.isConfirmed) Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'error', iconColor:'#f85149', title:'Loan Rejected', text:`${name} has been notified.`, confirmButtonColor:'#00d4a8', timer:2500, timerProgressBar:true }); });
+}
+function markOverdue(id) {
+  Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'warning', iconColor:'#d29922', title:'Send Reminder?', html:`<span style="font-size:12px">Send overdue reminder for ${id}?</span>`, showCancelButton:true, confirmButtonText:'Send SMS', confirmButtonColor:'#00d4a8', cancelButtonColor:'#21262d' }).then(r => { if(r.isConfirmed) Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'success', iconColor:'#3fb950', title:'Reminder Sent!', confirmButtonColor:'#00d4a8', timer:2000, timerProgressBar:true }); });
+}
+
+// ── DEFAULTER ACTIONS ────────────────────────────────────
+function sendReminder(name) {
+  Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'info', iconColor:'#388bfd', title:'Send Reminder', html:`<span style="font-size:12px">Send SMS reminder to <strong>${name}</strong>?</span>`, showCancelButton:true, confirmButtonText:'Send Now', confirmButtonColor:'#00d4a8', cancelButtonColor:'#21262d' }).then(r => { if(r.isConfirmed) Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'success', iconColor:'#3fb950', title:'Reminder Sent!', text:`SMS delivered to ${name}.`, confirmButtonColor:'#00d4a8', timer:2000, timerProgressBar:true }); });
+}
+function applyPenalty(name) {
+  Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'warning', iconColor:'#f85149', title:'Apply Penalty?', html:`<span style="font-size:12px">Apply a <strong>5% penalty</strong> to <strong>${name}</strong> for missed contribution?</span>`, showCancelButton:true, confirmButtonText:'Apply Penalty', confirmButtonColor:'#f85149', cancelButtonColor:'#21262d' }).then(r => { if(r.isConfirmed) Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'success', iconColor:'#3fb950', title:'Penalty Applied', text:`GH₵ 6 penalty added to ${name}'s account.`, confirmButtonColor:'#00d4a8', timer:2500, timerProgressBar:true }); });
+}
+function sendBulkReminders() {
+  Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'question', iconColor:'#00d4a8', title:'Send Bulk Reminders?', html:`<span style="font-size:12px">This will send an SMS reminder to all <strong>7 defaulters</strong>. Continue?</span>`, showCancelButton:true, confirmButtonText:'Send to All', confirmButtonColor:'#00d4a8', cancelButtonColor:'#21262d' }).then(r => { if(r.isConfirmed) Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'success', iconColor:'#3fb950', title:'Reminders Sent!', text:'7 SMS messages dispatched successfully.', confirmButtonColor:'#00d4a8', timer:3000, timerProgressBar:true }); });
+}
+
+// ── REPORT ACTIONS ───────────────────────────────────────
+function generatePDF() {
+  Swal.fire({ background:'#161b22', color:'#e6edf3', title:'Generating PDF…', html:`<span style="font-size:12px">Your payout report is being prepared.</span>`, timer:2000, timerProgressBar:true, didOpen: () => Swal.showLoading(), showConfirmButton:false }).then(() => Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'success', iconColor:'#3fb950', title:'PDF Ready!', text:'Download has started.', confirmButtonColor:'#00d4a8', timer:2000, timerProgressBar:true }));
+}
+function exportCSV() {
+  Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'success', iconColor:'#3fb950', title:'CSV Exported!', text:'File saved to downloads.', confirmButtonColor:'#00d4a8', timer:2000, timerProgressBar:true });
+}
+
+// ── NOTIFICATION ACTIONS ─────────────────────────────────
+function setTemplate(val) {
+  const templates = {
+    weekly: 'Dear member, this is a reminder to make your weekly contribution of GH₵ 120. Kindly pay before Sunday. Thank you.',
+    overdue: 'Dear member, your loan repayment is overdue. Please make payment immediately to avoid further penalties. Thank you.',
+    penalty: 'Dear member, a penalty has been applied to your account for a missed contribution. Please contact admin for details.',
+    payout: 'Dear member, the year-end profit sharing has been calculated. Please visit your nearest branch or contact admin for your payout details.'
+  };
+  document.getElementById('msgArea').value = templates[val] || '';
+}
+function sendBulkSMS() {
+  Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'question', iconColor:'#00d4a8', title:'Send Notification?', html:`<span style="font-size:12px">This will send the message to the selected recipients. Confirm?</span>`, showCancelButton:true, confirmButtonText:'Send Now', confirmButtonColor:'#00d4a8', cancelButtonColor:'#21262d' }).then(r => { if(r.isConfirmed) Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'success', iconColor:'#3fb950', title:'Sent!', text:'Your notification has been dispatched.', confirmButtonColor:'#00d4a8', timer:2500, timerProgressBar:true }); });
+}
+function scheduleMsg() {
+  Swal.fire({ background:'#161b22', color:'#e6edf3', title:'Schedule Message', input:'datetime-local', inputAttributes:{style:'background:#1c2230;color:#e6edf3;border:1px solid rgba(255,255,255,0.1);font-size:12px'}, showCancelButton:true, confirmButtonText:'Schedule', confirmButtonColor:'#00d4a8', cancelButtonColor:'#21262d' }).then(r => { if(r.isConfirmed && r.value) Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'success', iconColor:'#3fb950', title:'Scheduled!', text:`Message scheduled for ${new Date(r.value).toLocaleString()}.`, confirmButtonColor:'#00d4a8', timer:3000, timerProgressBar:true }); });
+}
+
+// ── SETTINGS ACTIONS ─────────────────────────────────────
+function saveSettings() {
+  Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'success', iconColor:'#3fb950', title:'Settings Saved!', text:'Your changes have been applied.', confirmButtonColor:'#00d4a8', timer:2000, timerProgressBar:true });
+}
+function changePassword() {
+  Swal.fire({ background:'#161b22', color:'#e6edf3', title:'Change Password', html:`<div style="display:flex;flex-direction:column;gap:8px"><input type="password" class="swal2-input" placeholder="Current password" style="background:#1c2230;border:1px solid rgba(255,255,255,0.1);color:#e6edf3;font-size:12px"><input type="password" class="swal2-input" placeholder="New password" style="background:#1c2230;border:1px solid rgba(255,255,255,0.1);color:#e6edf3;font-size:12px"></div>`, showCancelButton:true, confirmButtonText:'Update', confirmButtonColor:'#00d4a8', cancelButtonColor:'#21262d' }).then(r => { if(r.isConfirmed) Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'success', iconColor:'#3fb950', title:'Password Updated!', confirmButtonColor:'#00d4a8', timer:2000, timerProgressBar:true }); });
+}
+function confirmLogout() {
+  Swal.fire({ background:'#161b22', color:'#e6edf3', icon:'question', iconColor:'#d29922', title:'Logout?', html:`<span style="font-size:12px">Are you sure you want to end your session?</span>`, showCancelButton:true, confirmButtonText:'Logout', confirmButtonColor:'#f85149', cancelButtonColor:'#21262d' }).then(r => { if(r.isConfirmed) Swal.fire({ background:'#161b22', color:'#e6edf3', title:'Logged out.', timer:1500, showConfirmButton:false, timerProgressBar:true }); });
+}
+
+// ── CHARTS ───────────────────────────────────────────────
+let contribChartInst, donutChartInst, reportChartInst;
+
+function initCharts() {
+  if (contribChartInst) return;
+  Chart.defaults.color = '#8b949e';
+  Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+
+  const ctxC = document.getElementById('contribChart').getContext('2d');
+  contribChartInst = new Chart(ctxC, {
+    type: 'bar',
+    data: {
+      labels: ['Wk 7','Wk 8','Wk 9','Wk 10','Wk 11','Wk 12','Wk 13','Wk 14'],
+      datasets: [{
+        label: 'Contributions',
+        data: [5400, 5760, 6120, 5880, 6240, 6000, 5760, 6240],
+        backgroundColor: 'rgba(0,212,168,0.25)',
+        borderColor: '#00d4a8',
+        borderWidth: 1.5,
+        borderRadius: 4,
+      },{
+        label: 'Welfare',
+        data: [540,576,612,588,624,600,576,624],
+        backgroundColor: 'rgba(56,139,253,0.15)',
+        borderColor: '#388bfd',
+        borderWidth: 1.5,
+        borderRadius: 4,
+      }]
+    },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ font:{size:10}, boxWidth:10 } } }, scales:{ y:{ ticks:{ font:{size:10}, callback: v => 'GH₵ '+v/1000+'K' } }, x:{ ticks:{ font:{size:10} } } } }
+  });
+
+  const ctxD = document.getElementById('donutChart').getContext('2d');
+  donutChartInst = new Chart(ctxD, {
+    type: 'doughnut',
+    data: {
+      labels: ['Contributions','Welfare','Penalties'],
+      datasets: [{ data:[39000,4820,375], backgroundColor:['rgba(0,212,168,0.7)','rgba(56,139,253,0.7)','rgba(248,81,73,0.7)'], borderColor:['#00d4a8','#388bfd','#f85149'], borderWidth:1.5, hoverOffset:4 }]
+    },
+    options: { responsive:true, maintainAspectRatio:false, cutout:'65%', plugins:{ legend:{ position:'bottom', labels:{ font:{size:10}, boxWidth:10, padding:8 } } } }
+  });
+}
+
+function initReportChart() {
+  if (reportChartInst) return;
+  const ctx = document.getElementById('reportChart').getContext('2d');
+  reportChartInst = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+      datasets: [{
+        label: 'Contributions',
+        data: [4200,4440,4680,4800,4920,5160,5400,5640,5760,5880,6000,6240],
+        borderColor:'#00d4a8', backgroundColor:'rgba(0,212,168,0.08)', tension:.4, fill:true, borderWidth:2, pointRadius:3
+      },{
+        label: 'Loan Interest',
+        data: [300,320,440,500,560,620,700,760,800,840,880,900],
+        borderColor:'#d29922', backgroundColor:'rgba(210,153,34,0.08)', tension:.4, fill:true, borderWidth:2, pointRadius:3
+      }]
+    },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ font:{size:10}, boxWidth:10 } } }, scales:{ y:{ ticks:{ font:{size:10}, callback: v => 'GH₵ '+v/1000+'K' } }, x:{ ticks:{ font:{size:10} } } } }
+  });
+}
+
+// Init on load
+window.onload = () => { initCharts(); };
+</script>
+</body>
+</html>

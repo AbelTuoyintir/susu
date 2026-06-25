@@ -24,7 +24,7 @@ with(function () {
   <div style="display:flex; flex-direction:column; gap:16px;">
     @forelse($announcements as $ann)
       <div class="card" style="border-left: 4px solid {{ $ann->type === 'alert' ? 'var(--danger)' : ($ann->type === 'success' ? 'var(--success)' : 'var(--info)') }}">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; flex-wrap: wrap; gap: 4px;">
           <div style="font-weight:600; font-size:var(--fs-md); color:var(--text);">{{ $ann->title }}</div>
           <div style="font-size:10px; color:var(--text3);">{{ $ann->created_at->format('M j, Y H:i') }}</div>
         </div>

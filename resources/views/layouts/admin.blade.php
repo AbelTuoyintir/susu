@@ -232,25 +232,30 @@
   .alert-banner.warn { background:var(--warn-bg); border:1px solid rgba(210,153,34,0.2); color:var(--warn); }
 
   /* MOBILE OVERLAY */
-  .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:99; }
+  .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:99; backdrop-filter: blur(2px); }
 
   /* RESPONSIVE */
   @media (max-width: 900px) {
-    .sidebar { transform: translateX(-100%); }
+    .sidebar { transform: translateX(-100%); box-shadow: 10px 0 20px rgba(0,0,0,0.4); }
     .sidebar.open { transform: translateX(0); }
     .sidebar-overlay.show { display:block; }
-    .topbar { left: 0; }
-    .main { margin-left: 0; }
+    .topbar { left: 0; padding: 0 12px; }
+    .main { margin-left: 0; padding: 12px; }
     .hamburger { display:flex; }
-    .grid-2, .grid-3 { grid-template-columns:1fr; }
+    .grid-2, .grid-3 { grid-template-columns:1fr; gap: 12px; }
     .col-span-2 { grid-column:span 1; }
-    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .stats-grid { grid-template-columns: 1fr !important; }
     .search-box { display:none; }
     .loan-detail { grid-template-columns:1fr; }
+    .page-title { font-size: var(--fs); }
+    .page-subtitle { display: none; }
   }
   @media (max-width: 480px) {
-    .stats-grid { grid-template-columns: 1fr 1fr; }
-    .main { padding: 12px; }
+    .main { padding: 10px; }
+    .btn { width: 100%; justify-content: center; }
+    .card { padding: 12px; }
+    .filters { flex-direction: column; align-items: stretch; }
+    .filter-input { width: 100% !important; }
   }
 
   /* SCROLLBAR */

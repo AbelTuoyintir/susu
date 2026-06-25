@@ -30,7 +30,7 @@ $updatedSelectedBookId = function ($val) {
         $this->savings = Contribution::where('book_id', $book->id)
             ->where('is_missed', false)
             ->sum('contribution');
-        $this->maxLoanLimit = round($this->savings * 0.70, 2);
+        $this->maxLoanLimit = round($this->savings, 2);
     }
 };
 
@@ -39,7 +39,8 @@ $updatedAmount = function ($val) {
         $this->interest = 0;
         return;
     }
-    $this->interest = round($val * 0.10, 2);
+    $rate = \App\Models\Setting::val('loan_interest_rate', 10) / 100;
+    $this->interest = round($val * $rate, 2);
 };
 
 $submitRequest = function () {
@@ -47,7 +48,7 @@ $submitRequest = function () {
         'selectedBookId' => 'required|exists:books,id',
         'amount' => 'required|numeric|min:1|max:' . $this->maxLoanLimit,
     ], [
-        'amount.max' => 'The loan request amount exceeds your ceiling of GH₵ ' . number_format($this->maxLoanLimit, 2) . ' (70% of total savings).',
+        'amount.max' => 'The loan request amount exceeds your ceiling of GH₵ ' . number_format($this->maxLoanLimit, 2) . ' (100% of total savings).',
     ]);
     
     // Check if they already have a pending/active loan on this book
@@ -176,7 +177,7 @@ with(function () {
               <div style="font-size:var(--fs-md); font-weight:600; color:var(--success);">GH₵ {{ number_format($savings, 2) }}</div>
             </div>
             <div>
-              <div style="font-size:10px; color:var(--text3);">Max Loan Ceiling (70%)</div>
+              <div style="font-size:10px; color:var(--text3);">Max Loan Ceiling (100%)</div>
               <div style="font-size:var(--fs-md); font-weight:600; color:var(--accent);">GH₵ {{ number_format($maxLoanLimit, 2) }}</div>
             </div>
           </div>
@@ -196,7 +197,7 @@ with(function () {
                 <span class="mono">GH₵ {{ number_format((float)$amount, 2) }}</span>
               </div>
               <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-                <span style="color:var(--text2)">Interest Applied (10%):</span>
+                <span style="color:var(--text2)">Interest Applied ({{ \App\Models\Setting::val('loan_interest_rate', 10) }}%):</span>
                 <span class="mono" style="color:var(--warn)">GH₵ {{ number_format((float)$interest, 2) }}</span>
               </div>
               <div style="display:flex; justify-content:space-between; font-weight:600; margin-top:8px; border-top:1px solid var(--border); padding-top:6px; color:var(--accent)">
@@ -226,7 +227,7 @@ with(function () {
               <th>Loan ID</th>
               <th>Passbook</th>
               <th>Principal</th>
-              <th>Interest (10%)</th>
+              <th>Interest ({{ \App\Models\Setting::val('loan_interest_rate', 10) }}%)</th>
               <th>Total Repayment</th>
               <th>Amount Settled</th>
               <th>Due Date</th>

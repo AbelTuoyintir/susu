@@ -39,11 +39,14 @@ Route::middleware(['auth', 'verified'])->prefix('client')->name('client.')->grou
     Volt::route('contributions', 'pages.clients.contributions')->name('contributions');
     Volt::route('loans', 'pages.clients.loans')->name('loans');
     Volt::route('payments', 'pages.clients.payments')->name('payments');
+    Volt::route('announcements', 'pages.clients.announcements')->name('announcements');
     Volt::route('settings', 'pages.clients.settings')->name('settings');
 });
 
 Route::view('profile', 'profile')
     ->middleware(['auth'])
     ->name('profile');
+
+Route::post('payment/verify', [App\Http\Controllers\PaymentController::class, 'verify'])->name('payment.verify');
 
 require __DIR__.'/auth.php';

@@ -355,7 +355,7 @@
       <span style="color:var(--text3);font-size:12px">⌕</span>
       <input type="text" placeholder="Search anything…">
     </div>
-    <a href="/notifications" class="icon-btn notif-dot" wire:navigate style="text-decoration:none;">🔔</a>
+    <a href="/notifications" class="icon-btn {{ auth()->user()->unreadNotifications->count() > 0 ? 'notif-dot' : '' }}" wire:navigate style="text-decoration:none;">🔔</a>
     <a href="/settings" class="icon-btn" wire:navigate style="text-decoration:none;">⚙</a>
   </div>
 </header>

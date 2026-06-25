@@ -1,0 +1,125 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use App\Models\Payment;
+use App\Models\Contribution;
+use App\Models\Loan;
+use App\Models\LoanPayment;
+use App\Models\Book;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
+
+class PaymentController extends Controller
+{
+    public function verify(Request $request)
+    {
+        $reference = $request->reference;
+        if (!$reference) {
+            return response()->json(['status' => false, 'message' => 'No reference supplied'], 400);
+        }
+
+        $secretKey = config('services.paystack.secret_key');
+
+        $response = Http::withToken($secretKey)
+            ->get("https://api.paystack.co/transaction/verify/" . rawurlencode($reference));
+
+        if (!$response->successful()) {
+            return response()->json(['status' => false, 'message' => 'Failed to verify transaction'], 400);
+        }
+
+        $data = $response->json();
+        if ($data['status'] && $data['data']['status'] === 'success') {
+            // SECURITY: Verify the actual amount paid (in kobo/pesewas)
+            $actualAmountPaid = $data['data']['amount'] / 100;
+
+            $metadata = $data['data']['metadata'];
+            $userId = $metadata['user_id'];
+            $paymentType = $metadata['payment_type'];
+
+            // Determine expected amount from metadata
+            $expectedAmount = 0;
+            if ($paymentType === 'contribution') {
+                $expectedAmount = $metadata['amount_to_pay'] + $metadata['welfare_to_pay'];
+            } elseif ($paymentType === 'loan') {
+                $expectedAmount = $metadata['loan_payment_amount'];
+            }
+
+            // Cross-check amounts
+            if (abs($actualAmountPaid - $expectedAmount) > 0.01) {
+                Log::error("Payment amount mismatch for ref: $reference. Expected: $expectedAmount, Paid: $actualAmountPaid");
+                return response()->json(['status' => false, 'message' => 'Payment amount mismatch'], 400);
+            }
+
+            // Check if payment already processed
+            if (Payment::where('transaction_id', $reference)->exists()) {
+                return response()->json(['status' => true, 'message' => 'Already processed']);
+            }
+
+            if ($paymentType === 'contribution') {
+                $bookId = $metadata['book_id'];
+                $nextWeek = $metadata['next_week'];
+                $amountToPay = $metadata['amount_to_pay'];
+                $welfareToPay = $metadata['welfare_to_pay'];
+
+                // 1. Create Contribution
+                Contribution::create([
+                    'user_id' => $userId,
+                    'book_id' => $bookId,
+                    'week_number' => $nextWeek,
+                    'contribution' => $amountToPay,
+                    'welfare' => $welfareToPay,
+                    'penalty' => 0,
+                    'is_missed' => false,
+                ]);
+
+                // 2. Create Contribution Payment record
+                Payment::create([
+                    'user_id' => $userId,
+                    'book_id' => $bookId,
+                    'payment_type' => 'contribution',
+                    'transaction_id' => $reference,
+                    'payment_method' => 'card',
+                    'amount_paid' => $actualAmountPaid,
+                    'status' => 'completed',
+                    'paid_at' => now(),
+                ]);
+
+            } elseif ($paymentType === 'loan') {
+                $loanId = $metadata['loan_id'];
+                $amountPaid = $metadata['loan_payment_amount'];
+
+                $loan = Loan::find($loanId);
+                if ($loan) {
+                    LoanPayment::create([
+                        'loan_id' => $loan->id,
+                        'amount_paid' => $amountPaid,
+                    ]);
+
+                    Payment::create([
+                        'user_id' => $userId,
+                        'loan_id' => $loan->id,
+                        'payment_type' => 'loan_repayment',
+                        'transaction_id' => $reference,
+                        'payment_method' => 'card',
+                        'amount_paid' => $actualAmountPaid,
+                        'status' => 'completed',
+                        'paid_at' => now(),
+                    ]);
+
+                    $loan->refresh();
+                    $totalOwed = $loan->amount + $loan->interest;
+                    if ($loan->amount_repaid >= $totalOwed) {
+                        $loan->update(['status' => 'paid']);
+                    }
+                }
+            }
+
+            return response()->json(['status' => true, 'message' => 'Payment successful']);
+        }
+
+        return response()->json(['status' => false, 'message' => 'Transaction failed'], 400);
+    }
+}

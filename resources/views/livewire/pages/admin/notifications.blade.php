@@ -3,48 +3,74 @@
 use function Livewire\Volt\layout;
 use function Livewire\Volt\state;
 use function Livewire\Volt\with;
+use App\Models\Announcement;
 
 layout('layouts.admin');
 
 state([
-    'recipientGroup' => 'All Users (248)',
-    'channel' => ' SMS', // SMS, Email, Push
-    'template' => '',
+    'recipientGroup' => 'All Users',
+    'type' => 'general',
+    'title' => '',
     'message' => '',
 ]);
 
 $setTemplate = function ($val) {
-    $this->template = $val;
     $templates = [
-        'weekly' => 'Dear member, this is a reminder to make your weekly contribution of GH₵ 120. Kindly pay before Sunday. Thank you.',
-        'overdue' => 'Dear member, your loan repayment is overdue. Please make payment immediately to avoid further penalties.',
-        'penalty' => 'Dear member, a penalty has been applied to your account for a missed contribution. Please contact admin.',
-        'payout' => 'Dear member, the year-end profit sharing has been calculated. Contact admin for your payout details.',
+        'weekly' => [
+            'title' => 'Weekly Contribution Reminder',
+            'message' => 'Dear member, this is a reminder to make your weekly contribution of GH₵ 120. Kindly pay before Sunday. Thank you.'
+        ],
+        'overdue' => [
+            'title' => 'Overdue Loan Warning',
+            'message' => 'Dear member, your loan repayment is overdue. Please make payment immediately to avoid further penalties.'
+        ],
+        'penalty' => [
+            'title' => 'Penalty Applied Notice',
+            'message' => 'Dear member, a penalty has been applied to your account for a missed contribution. Please contact admin.'
+        ],
+        'payout' => [
+            'title' => 'Year-End Payout Info',
+            'message' => 'Dear member, the year-end profit sharing has been calculated. Contact admin for your payout details.'
+        ],
     ];
-    $this->message = $templates[$val] ?? '';
+
+    if (isset($templates[$val])) {
+        $this->title = $templates[$val]['title'];
+        $this->message = $templates[$val]['message'];
+    }
 };
 
-$sendBulkSMS = function () {
-    $this->validate(['message' => 'required|min:5']);
+$sendAnnouncement = function () {
+    $this->validate([
+        'title' => 'required|min:3',
+        'message' => 'required|min:5',
+        'type' => 'required',
+        'recipientGroup' => 'required',
+    ]);
+
+    Announcement::create([
+        'title' => $this->title,
+        'content' => $this->message,
+        'type' => $this->type,
+        'target_group' => $this->recipientGroup,
+        'user_id' => auth()->id(),
+    ]);
     
-    // In production, this dispatches via Twilio or Resend API
-    session()->flash('success', "Notification dispatched successfully via {$this->channel} to {$this->recipientGroup}!");
+    session()->flash('success', "Announcement dispatched successfully!");
     
     // Clear draft
+    $this->title = '';
     $this->message = '';
-    $this->template = '';
 };
 
-$scheduleMsg = function () {
-    $this->validate(['message' => 'required|min:5']);
-    session()->flash('success', "Message scheduled to be broadcasted at a later time via {$this->channel}.");
-};
+with(function () {
+    return [
+        'recentAnnouncements' => Announcement::with('user')->latest()->take(5)->get(),
+    ];
+});
 
 ?>
 
-<!-- ═══════════════════════════════════════════
-     PAGE 9: NOTIFICATIONS
-═══════════════════════════════════════════ -->
 <div class="page active" id="page-notifications">
   
   @if(session()->has('success'))
@@ -56,7 +82,7 @@ $scheduleMsg = function () {
   <div class="grid-2">
     <!-- SEND MODULE -->
     <div class="card">
-      <div class="card-header"><div class="card-title">Send Notification</div></div>
+      <div class="card-header"><div class="card-title">Send Notification / Announcement</div></div>
       <div style="display:flex;flex-direction:column;gap:12px">
         <div>
           <div style="font-size:var(--fs-sm);color:var(--text3);margin-bottom:5px">Recipients</div>
@@ -68,70 +94,57 @@ $scheduleMsg = function () {
           </select>
         </div>
         <div>
-          <div style="font-size:var(--fs-sm);color:var(--text3);margin-bottom:5px">Channel</div>
-          <div style="display:flex;gap:8px">
-            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:var(--fs-sm)">
-                <input type="radio" wire:model="channel" value="SMS"> 📱 SMS
-            </label>
-            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:var(--fs-sm)">
-                <input type="radio" wire:model="channel" value="Email"> 📧 Email
-            </label>
-            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:var(--fs-sm)">
-                <input type="radio" wire:model="channel" value="Push"> 🔔 Push
-            </label>
-          </div>
+          <div style="font-size:var(--fs-sm);color:var(--text3);margin-bottom:5px">Type</div>
+          <select wire:model="type" class="filter-input" style="width:100%">
+            <option value="general">General</option>
+            <option value="alert">Alert (Red)</option>
+            <option value="success">Success (Green)</option>
+            <option value="info">Info (Blue)</option>
+          </select>
         </div>
         <div>
           <div style="font-size:var(--fs-sm);color:var(--text3);margin-bottom:5px">Message Template</div>
-          <select wire:model.live="template" wire:change="setTemplate($event.target.value)" class="filter-input" style="width:100%;margin-bottom:8px">
+          <select wire:change="setTemplate($event.target.value)" class="filter-input" style="width:100%;margin-bottom:8px">
             <option value="">Custom message…</option>
             <option value="weekly">Weekly Contribution Reminder</option>
             <option value="overdue">Overdue Loan Warning</option>
             <option value="penalty">Penalty Applied Notice</option>
             <option value="payout">Year-End Payout Info</option>
           </select>
+
+          <input type="text" wire:model="title" class="filter-input" style="width:100%; margin-bottom:8px;" placeholder="Announcement Title">
+          @error('title') <span style="color:var(--danger);font-size:12px;">{{ $message }}</span> @enderror
+
           <textarea wire:model="message" class="filter-input" rows="4" style="width:100%;resize:vertical" placeholder="Type your message here…"></textarea>
           @error('message') <span style="color:var(--danger);font-size:12px;">{{ $message }}</span> @enderror
         </div>
         <div style="display:flex;gap:8px">
-          <button class="btn btn-primary" wire:click="sendBulkSMS">
-              <span wire:loading.remove wire:target="sendBulkSMS">📤 Send Now</span>
-              <span wire:loading wire:target="sendBulkSMS">Dispatching...</span>
+          <button class="btn btn-primary" wire:click="sendAnnouncement">
+              <span wire:loading.remove wire:target="sendAnnouncement">📤 Send & Post</span>
+              <span wire:loading wire:target="sendAnnouncement">Dispatching...</span>
           </button>
-          <button class="btn btn-outline" wire:click="scheduleMsg">🕐 Schedule</button>
         </div>
       </div>
     </div>
 
     <!-- LOG MODULE -->
     <div class="card">
-      <div class="card-header"><div class="card-title">Recent Notifications</div></div>
+      <div class="card-header"><div class="card-title">Recent Announcements</div></div>
       <div>
-        <!-- Simulated Log Entries -->
+        @forelse($recentAnnouncements as $ann)
         <div class="notif-item">
-          <div class="notif-icon-wrap" style="background:var(--danger-bg)">⚠️</div>
+          <div class="notif-icon-wrap" style="background:{{ $ann->type === 'alert' ? 'var(--danger-bg)' : ($ann->type === 'success' ? 'var(--success-bg)' : 'var(--info-bg)') }}">
+            {{ $ann->type === 'alert' ? '⚠️' : ($ann->type === 'success' ? '✅' : '📣') }}
+          </div>
           <div class="notif-content">
-            <div class="notif-title">Contribution Reminder — Bulk SMS</div>
-            <div class="notif-msg">Sent to 7 defaulters: "Dear member, you have missed your weekly contribution…"</div>
-            <div class="notif-time">Today, 08:00 • 7 recipients • ✅ All delivered</div>
+            <div class="notif-title">{{ $ann->title }} — {{ $ann->target_group }}</div>
+            <div class="notif-msg">{{ Str::limit($ann->content, 100) }}</div>
+            <div class="notif-time">{{ $ann->created_at->diffForHumans() }} • Sent by {{ $ann->user->name ?? 'Admin' }}</div>
           </div>
         </div>
-        <div class="notif-item">
-          <div class="notif-icon-wrap" style="background:var(--warn-bg)">🏦</div>
-          <div class="notif-content">
-            <div class="notif-title">Loan Overdue Alert</div>
-            <div class="notif-msg">Sent to Yaw Osei: "Your loan repayment is now 19 days overdue…"</div>
-            <div class="notif-time">Yesterday, 09:00 • 1 recipient • ✅ Delivered</div>
-          </div>
-        </div>
-        <div class="notif-item">
-          <div class="notif-icon-wrap" style="background:var(--success-bg)">📣</div>
-          <div class="notif-content">
-            <div class="notif-title">Weekly Contribution Reminder</div>
-            <div class="notif-msg">General reminder sent to all 248 members for Week 14.</div>
-            <div class="notif-time">Mon Apr 1, 07:00 • 248 recipients • ✅ 241 delivered</div>
-          </div>
-        </div>
+        @empty
+        <div style="text-align:center; padding: 20px; color:var(--text3);">No recent announcements.</div>
+        @endforelse
       </div>
     </div>
   </div>

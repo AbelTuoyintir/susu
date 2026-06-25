@@ -18,12 +18,6 @@ state([
     'amountToPay' => 0,
     'welfareToPay' => 0,
     'loanPaymentAmount' => '',
-    'paymentMethod' => 'mobile_money',
-    'mobileNumber' => '',
-    'network' => 'MTN',
-    'cardNumber' => '',
-    'cardExpiry' => '',
-    'cardCvv' => '',
     'nextWeek' => 0,
     'outstandingBalance' => 0,
     'processing' => false,
@@ -51,7 +45,7 @@ $updatedSelectedBookId = function ($val) {
     if ($book) {
         $this->nextWeek = (Contribution::where('book_id', $book->id)->max('week_number') ?? 0) + 1;
         $this->amountToPay = $book->contribution_amount;
-        $this->welfareToPay = round($book->contribution_amount * 0.10, 2);
+        $this->welfareToPay = \App\Models\Setting::val('welfare_amount', 10);
     }
 };
 
@@ -70,8 +64,7 @@ $updatedSelectedLoanId = function ($val) {
     }
 };
 
-$submitPayment = function () {
-    // Basic Val
+$initiatePaystack = function () {
     if ($this->paymentType === 'contribution') {
         $this->validate([
             'selectedBookId' => 'required|exists:books,id',
@@ -83,99 +76,37 @@ $submitPayment = function () {
         ]);
     }
 
-    if ($this->paymentMethod === 'mobile_money') {
-        $this->validate([
-            'mobileNumber' => 'required|string|min:9',
-            'network' => 'required|string',
-        ]);
-    } else {
-        $this->validate([
-            'cardNumber' => 'required|string|min:16',
-            'cardExpiry' => 'required|string|min:5',
-            'cardCvv' => 'required|string|min:3|max:4',
-        ]);
-    }
+    $amount = ($this->paymentType === 'contribution')
+        ? ($this->amountToPay + $this->welfareToPay)
+        : (float)$this->loanPaymentAmount;
 
-    $this->processing = true;
-
-    // Simulate Network Delay (handled cleanly in front-end state, but we process data now)
-    $userId = auth()->id();
-    $baseTxnId = 'TXN-' . strtoupper(Str::random(8));
+    $metadata = [
+        'user_id' => auth()->id(),
+        'payment_type' => $this->paymentType,
+    ];
 
     if ($this->paymentType === 'contribution') {
-        $book = Book::find($this->selectedBookId);
-        
-        // 1. Create Contribution
-        Contribution::create([
-            'user_id' => $userId,
-            'book_id' => $book->id,
-            'week_number' => $this->nextWeek,
-            'contribution' => $this->amountToPay,
-            'welfare' => $this->welfareToPay,
-            'penalty' => 0,
-            'is_missed' => false,
-        ]);
-
-        // 2. Create Contribution Payment
-        Payment::create([
-            'user_id' => $userId,
-            'book_id' => $book->id,
-            'payment_type' => 'contribution',
-            'transaction_id' => $baseTxnId . '-C',
-            'payment_method' => $this->paymentMethod,
-            'amount_paid' => $this->amountToPay,
-            'status' => 'completed',
-            'paid_at' => now(),
-        ]);
-
-        // 3. Create Welfare Payment
-        Payment::create([
-            'user_id' => $userId,
-            'book_id' => $book->id,
-            'payment_type' => 'welfare',
-            'transaction_id' => $baseTxnId . '-W',
-            'payment_method' => $this->paymentMethod,
-            'amount_paid' => $this->welfareToPay,
-            'status' => 'completed',
-            'paid_at' => now(),
-        ]);
-
-        $msg = "Successfully deposited weekly contribution of GH₵ " . number_format($this->amountToPay, 2) . " and welfare fee of GH₵ " . number_format($this->welfareToPay, 2) . " to Book #" . $book->book_number . " for Week " . $this->nextWeek . ".";
+        $metadata['book_id'] = $this->selectedBookId;
+        $metadata['next_week'] = $this->nextWeek;
+        $metadata['amount_to_pay'] = $this->amountToPay;
+        $metadata['welfare_to_pay'] = $this->welfareToPay;
     } else {
-        $loan = Loan::find($this->selectedLoanId);
-        $amountPaid = (float) $this->loanPaymentAmount;
-
-        // 1. Create Loan Payment details
-        LoanPayment::create([
-            'loan_id' => $loan->id,
-            'amount_paid' => $amountPaid,
-        ]);
-
-        // 2. Create General Payment Audit Record
-        Payment::create([
-            'user_id' => $userId,
-            'loan_id' => $loan->id,
-            'payment_type' => 'loan_repayment',
-            'transaction_id' => $baseTxnId . '-L',
-            'payment_method' => $this->paymentMethod,
-            'amount_paid' => $amountPaid,
-            'status' => 'completed',
-            'paid_at' => now(),
-        ]);
-
-        // 3. Refresh loan and check if fully settled
-        $loan->refresh();
-        $totalOwed = $loan->amount + $loan->interest;
-        if ($loan->amount_repaid >= $totalOwed) {
-            $loan->update(['status' => 'paid']);
-        }
-
-        $msg = "Successfully paid GH₵ " . number_format($amountPaid, 2) . " towards Loan #" . sprintf('LN-%04d', $loan->id) . ".";
+        $metadata['loan_id'] = $this->selectedLoanId;
+        $metadata['loan_payment_amount'] = $this->loanPaymentAmount;
     }
 
-    $this->processing = false;
+    $this->dispatch('initiate-paystack', [
+        'email' => auth()->user()->email,
+        'amount' => $amount * 100, // Paystack amount is in kobo/pesewas
+        'metadata' => $metadata,
+        'key' => config('services.paystack.public_key'),
+    ]);
+};
 
-    // Reset Form inputs
+$handleSuccess = function ($reference) {
+    // This is called via livewire from frontend after paystack success
+    // Verification is done on backend by Paystack controller, but we can refresh UI here
+    $this->paymentType = 'contribution';
     $this->selectedBookId = '';
     $this->selectedLoanId = '';
     $this->amountToPay = 0;
@@ -183,24 +114,17 @@ $submitPayment = function () {
     $this->loanPaymentAmount = '';
     $this->nextWeek = 0;
     $this->outstandingBalance = 0;
-    $this->mobileNumber = '';
-    $this->cardNumber = '';
-    $this->cardExpiry = '';
-    $this->cardCvv = '';
 
-    // Dispatch custom event for browser SweetAlert
-    $this->dispatch('payment-success', message: $msg);
+    $this->dispatch('payment-verified', message: "Payment processed successfully! Ref: $reference");
 };
 
 with(function () {
     $userId = auth()->id();
     
-    // User active books
     $activeBooks = Book::where('user_id', $userId)
         ->where('status', 'active')
         ->get();
 
-    // User outstanding loans
     $activeLoans = Loan::where('user_id', $userId)
         ->whereIn('status', ['active', 'defaulted'])
         ->get();
@@ -216,16 +140,15 @@ with(function () {
 <div class="page active" id="page-client-payments" x-data="{ localProcessing: false }">
   <div class="card" style="max-width: 600px; margin: 0 auto;">
     <div class="card-header">
-      <div class="card-title">Online Payment Simulator</div>
-      <div class="card-sub">Mock sandbox environment to simulate online payments</div>
+      <div class="card-title">Online Payment</div>
+      <div class="card-sub">Secure payment via Paystack</div>
     </div>
 
-    <!-- Alert for Sandbox Mode -->
     <div class="card" style="background:var(--info-bg); border-color:var(--info); color:var(--text); padding:10px; margin-bottom:16px; font-size:11px;">
-        💡 <strong>Sandbox Simulator:</strong> This form processes instant mock transactions. No real funds are transferred.
+        🔒 <strong>Secure Payment:</strong> We use Paystack for all our transactions. Your card details are never stored on our servers.
     </div>
 
-    <form wire:submit="submitPayment" x-on:submit="localProcessing = true; setTimeout(() => { localProcessing = false; }, 2000)" style="display:flex; flex-direction:column; gap:14px;">
+    <form wire:submit.prevent="initiatePaystack" style="display:flex; flex-direction:column; gap:14px;">
       <!-- Toggle Payment Type -->
       <div class="form-group">
         <label class="form-label">Payment Category</label>
@@ -294,74 +217,61 @@ with(function () {
       @endif
 
       @if(($paymentType === 'contribution' && $selectedBookId) || ($paymentType === 'loan' && $selectedLoanId))
-        <!-- Payment Methods Details Section -->
-        <div style="border-top: 1px solid var(--border); padding-top:14px; margin-top:4px;">
-            <label class="form-label">Choose Payment Method</label>
-            <div style="display:flex; gap:8px; margin-top:6px;">
-                <label class="btn btn-outline" style="flex:1; cursor:pointer; text-align:center; {{ $paymentMethod === 'mobile_money' ? 'border-color:var(--accent); color:var(--accent); background:var(--accent-dim);' : '' }}">
-                    <input type="radio" name="paymentMethod" value="mobile_money" wire:model.live="paymentMethod" style="display:none;">
-                    Mobile Money
-                </label>
-                <label class="btn btn-outline" style="flex:1; cursor:pointer; text-align:center; {{ $paymentMethod === 'card' ? 'border-color:var(--accent); color:var(--accent); background:var(--accent-dim);' : '' }}">
-                    <input type="radio" name="paymentMethod" value="card" wire:model.live="paymentMethod" style="display:none;">
-                    Credit/Debit Card
-                </label>
-            </div>
-        </div>
-
-        @if($paymentMethod === 'mobile_money')
-          <!-- MoMo Form -->
-          <div class="grid-2" style="margin-top:12px; gap: 12px;">
-             <div class="form-group">
-                <label class="form-label">Network Provider</label>
-                <select wire:model="network" class="filter-input" style="width:100%" required>
-                    <option>MTN MoMo</option>
-                    <option>Telecel Cash</option>
-                    <option>AT Money</option>
-                </select>
-             </div>
-             <div class="form-group">
-                <label class="form-label">Mobile Number *</label>
-                <input type="tel" wire:model="mobileNumber" class="form-input" placeholder="e.g. 0241234567" required>
-                @error('mobileNumber') <span style="color:var(--danger); font-size:11px;">{{ $message }}</span> @enderror
-             </div>
-          </div>
-        @else
-          <!-- Card Form -->
-          <div style="display:flex; flex-direction:column; gap:12px; margin-top:12px;">
-             <div class="form-group">
-                <label class="form-label">Card Number *</label>
-                <input type="text" maxlength="19" wire:model="cardNumber" class="form-input" placeholder="4111 2222 3333 4444" required>
-                @error('cardNumber') <span style="color:var(--danger); font-size:11px;">{{ $message }}</span> @enderror
-             </div>
-             <div class="grid-2" style="gap:12px;">
-                <div class="form-group">
-                    <label class="form-label">Expiry Date *</label>
-                    <input type="text" maxlength="5" wire:model="cardExpiry" class="form-input" placeholder="MM/YY" required>
-                    @error('cardExpiry') <span style="color:var(--danger); font-size:11px;">{{ $message }}</span> @enderror
-                </div>
-                <div class="form-group">
-                    <label class="form-label">CVV Code *</label>
-                    <input type="password" maxlength="4" wire:model="cardCvv" class="form-input" placeholder="•••" required>
-                    @error('cardCvv') <span style="color:var(--danger); font-size:11px;">{{ $message }}</span> @enderror
-                </div>
-             </div>
-          </div>
-        @endif
-
         <!-- Submit Simulation CTA -->
         <div style="margin-top:16px;">
           <button type="submit" class="btn btn-primary" style="width:100%; font-size:var(--fs-md); padding:10px;" x-bind:disabled="localProcessing">
-             <span x-show="!localProcessing">🔒 Securely Pay GH₵ {{ $paymentType === 'contribution' ? number_format($amountToPay + $welfareToPay, 2) : number_format((float)$loanPaymentAmount, 2) }}</span>
-             <span x-show="localProcessing" style="display:none;">⏳ Simulating Gateway Authorization...</span>
+             <span x-show="!localProcessing">💳 Pay GH₵ {{ $paymentType === 'contribution' ? number_format($amountToPay + $welfareToPay, 2) : number_format((float)$loanPaymentAmount, 2) }}</span>
+             <span x-show="localProcessing" style="display:none;">⏳ Initiating Gateway...</span>
           </button>
         </div>
       @endif
     </form>
   </div>
 
+  <script src="https://js.paystack.co/v1/inline.js"></script>
   <script>
-    window.addEventListener('payment-success', event => {
+    window.addEventListener('initiate-paystack', event => {
+        const data = event.detail[0];
+        let handler = PaystackPop.setup({
+            key: data.key,
+            email: data.email,
+            amount: data.amount,
+            currency: 'GHS',
+            metadata: data.metadata,
+            callback: function(response) {
+                // Verify on server
+                fetch('{{ route('payment.verify') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ reference: response.reference })
+                })
+                .then(res => res.json())
+                .then(res => {
+                    if (res.status) {
+                        @this.handleSuccess(response.reference);
+                    } else {
+                        Swal.fire({
+                            background: '#161b22',
+                            color: '#e6edf3',
+                            icon: 'error',
+                            title: 'Verification Failed',
+                            text: res.message,
+                            confirmButtonColor: '#f85149'
+                        });
+                    }
+                });
+            },
+            onClose: function() {
+                // Swal.fire({ icon: 'info', title: 'Transaction Cancelled' });
+            }
+        });
+        handler.openIframe();
+    });
+
+    window.addEventListener('payment-verified', event => {
         Swal.fire({
             background: '#161b22',
             color: '#e6edf3',

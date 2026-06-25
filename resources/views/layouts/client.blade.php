@@ -97,6 +97,8 @@
   .topbar-right { margin-left: auto; display:flex; align-items:center; gap:10px; }
   .icon-btn { width:32px; height:32px; background:var(--bg3); border:1px solid var(--border); border-radius:var(--r); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all .15s; color: var(--text2); font-size: 14px; }
   .icon-btn:hover { border-color:var(--border2); color:var(--text); }
+  .notif-dot { position:relative; }
+  .notif-dot::after { content:''; position:absolute; top:6px; right:6px; width:6px; height:6px; background:var(--danger); border-radius:50%; border:1.5px solid var(--bg2); }
 
   /* MAIN */
   .main { margin-left: var(--sidebar-w); margin-top: 52px; padding: 20px; min-height: calc(100vh - 52px); }
@@ -210,6 +212,7 @@
     <div class="nav-section">My Accounts</div>
     <a href="/client/contributions" class="nav-item {{ request()->routeIs('client.contributions') ? 'active' : '' }}" wire:navigate><span class="nav-icon">◎</span> Contributions</a>
     <a href="/client/loans" class="nav-item {{ request()->routeIs('client.loans') ? 'active' : '' }}" wire:navigate><span class="nav-icon">◈</span> Loans & Requests</a>
+    <a href="/client/announcements" class="nav-item {{ request()->routeIs('client.announcements') ? 'active' : '' }}" wire:navigate><span class="nav-icon">📣</span> Announcements</a>
 
     <div class="nav-section">Services</div>
     <a href="/client/payments" class="nav-item {{ request()->routeIs('client.payments') ? 'active' : '' }}" wire:navigate><span class="nav-icon">▷</span> Make Payment</a>
@@ -245,6 +248,7 @@
         'client.contributions' => ['My Contributions', 'Savings History & Statement'],
         'client.loans'         => ['My Loans & Requests', 'Apply & Track Repayments'],
         'client.payments'      => ['Self-Service Payment', 'Pay Contribution or Loan Repayment Online'],
+        'client.announcements' => ['Announcements', 'Latest Updates & Messages'],
         'client.settings'      => ['Account Settings', 'Update Profile & Security Details'],
       ];
       $currentRoute = Route::currentRouteName();
@@ -254,6 +258,9 @@
     <div class="page-subtitle" id="topbar-sub">{{ $pageInfo[1] }}</div>
   </div>
   <div class="topbar-right">
+    <div style="position:relative;">
+        <a href="/client/announcements" class="icon-btn {{ auth()->user()->unreadNotifications->count() > 0 ? 'notif-dot' : '' }}" wire:navigate style="text-decoration:none;">🔔</a>
+    </div>
     <a href="/client/settings" class="icon-btn" wire:navigate style="text-decoration:none;">⚙</a>
   </div>
 </header>

@@ -46,9 +46,10 @@ $updatedAmount = function ($val) {
 $submitRequest = function () {
     $this->validate([
         'selectedBookId' => 'required|exists:books,id',
-        'amount' => 'required|numeric|min:1|max:' . $this->maxLoanLimit,
+        'amount' => 'required|numeric|min:1|max:' . $this->maxLoanLimit . '|in:' . $this->maxLoanLimit,
     ], [
         'amount.max' => 'The loan request amount exceeds your ceiling of GH₵ ' . number_format($this->maxLoanLimit, 2) . ' (100% of total savings).',
+        'amount.in' => 'Per current policy, you must request exactly the amount of your total savings (GH₵ ' . number_format($this->maxLoanLimit, 2) . ').',
     ]);
     
     // Check if they already have a pending/active loan on this book
@@ -184,8 +185,9 @@ with(function () {
 
           <div class="form-group">
             <label class="form-label">Principal Amount to Borrow (GH₵) *</label>
-            <input type="number" step="0.01" max="{{ $maxLoanLimit }}" wire:model.live="amount" class="form-input" placeholder="Enter amount to borrow" required>
-            @error('amount') <span style="color:var(--danger); font-size:11px;">{{ $message }}</span> @enderror
+            <input type="number" step="0.01" max="{{ $maxLoanLimit }}" wire:model.live="amount" class="form-input" placeholder="Must be exactly GH₵ {{ number_format($maxLoanLimit, 2) }}" required>
+            <span style="font-size:10px; color:var(--text3); margin-top:4px;">Policy: Loan amount must be <strong>equivalent</strong> to your current total savings.</span>
+            @error('amount') <span style="color:var(--danger); font-size:11px; display:block; margin-top:4px;">{{ $message }}</span> @enderror
           </div>
 
           @if($amount && is_numeric($amount))

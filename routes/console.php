@@ -18,4 +18,11 @@ Artisan::command('loans:check-defaults', function () {
     $this->call(\App\Console\Commands\CheckLoanDefaults::class);
 })->describe('Mark pending loans as defaulted when due_date has passed');
 
+Artisan::command('remind:loans', function () {
+    $this->call(\App\Console\Commands\RemindLoanPayments::class);
+})->describe('Send reminders for loans due soon');
+
+Artisan::command('remind:sharing', function () {
+    $this->call(\App\Console\Commands\RemindContributionSharing::class);
+})->describe('Remind admin to share contributions for books that ended');
 

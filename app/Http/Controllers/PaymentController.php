@@ -9,6 +9,7 @@ use App\Models\Contribution;
 use App\Models\Loan;
 use App\Models\LoanPayment;
 use App\Models\Book;
+use App\Models\Ledger;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 
@@ -60,7 +61,10 @@ class PaymentController extends Controller
 
             if ($paymentType === 'contribution') {
                 $bookId = $metadata['book_id'];
-                $nextWeek = $metadata['next_week'];
+
+                // Refine week_number determination
+                $nextWeek = (Contribution::where('book_id', $bookId)->max('week_number') ?? 0) + 1;
+
                 $amountToPay = $metadata['amount_to_pay'];
                 $welfareToPay = $metadata['welfare_to_pay'];
 
@@ -75,7 +79,26 @@ class PaymentController extends Controller
                     'is_missed' => false,
                 ]);
 
-                // 2. Create Contribution Payment record
+                // 2. Create Ledger entries
+                Ledger::create([
+                    'user_id' => $userId,
+                    'book_id' => $bookId,
+                    'type' => 'contribution',
+                    'amount' => $amountToPay,
+                    'week_number' => $nextWeek,
+                    'description' => "Contribution for Week $nextWeek (via Paystack)",
+                ]);
+
+                Ledger::create([
+                    'user_id' => $userId,
+                    'book_id' => $bookId,
+                    'type' => 'welfare',
+                    'amount' => $welfareToPay,
+                    'week_number' => $nextWeek,
+                    'description' => "Welfare for Week $nextWeek (via Paystack)",
+                ]);
+
+                // 3. Create Contribution Payment record
                 Payment::create([
                     'user_id' => $userId,
                     'book_id' => $bookId,
@@ -96,6 +119,15 @@ class PaymentController extends Controller
                     LoanPayment::create([
                         'loan_id' => $loan->id,
                         'amount_paid' => $amountPaid,
+                    ]);
+
+                    // Create Ledger entry for repayment
+                    Ledger::create([
+                        'user_id' => $userId,
+                        'book_id' => $loan->book_id,
+                        'type' => 'repayment',
+                        'amount' => $amountPaid,
+                        'description' => "Loan repayment for Loan #LN-" . sprintf('%04d', $loan->id) . " (via Paystack)",
                     ]);
 
                     Payment::create([

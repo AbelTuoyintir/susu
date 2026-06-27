@@ -23,27 +23,27 @@ class LoanController extends Controller
             'amount' => 'required|numeric|min:1'
         ]);
 
-        // 🧠 Calculate savings
-        $totalSaved = Ledger::where('book_id', $book->id)
-            ->whereIn('type', ['contribution', 'welfare'])
-            ->sum('amount');
+        // 🧠 Calculate savings (Only base contributions count towards loan ceiling)
+        $totalSaved = \App\Models\Contribution::where('book_id', $book->id)
+            ->where('is_missed', false)
+            ->sum('contribution');
 
-        $maxLoan = $totalSaved * 0.7;
-
-        if ($request->amount > $maxLoan) {
+        // Policy: Loan must be exactly 100% of savings
+        if (abs($request->amount - $totalSaved) > 0.01) {
             return response()->json([
-                'error' => 'Loan exceeds limit'
+                'error' => 'Loan amount must be exactly equivalent to your total savings (GH₵ ' . number_format($totalSaved, 2) . ')'
             ], 400);
         }
 
         // 🚫 Check existing loan
-        if ($book->loans()->where('status', 'pending')->exists()) {
+        if ($book->loans()->whereIn('status', ['pending', 'active', 'defaulted'])->exists()) {
             return response()->json([
                 'error' => 'Clear existing loan first'
             ], 400);
         }
 
-        $interest = 0.10 * $request->amount;
+        $rate = \App\Models\Setting::val('loan_interest_rate', 10) / 100;
+        $interest = $rate * $request->amount;
 
         $loan = Loan::create([
             'user_id' => auth()->id(),

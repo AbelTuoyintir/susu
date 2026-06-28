@@ -23,28 +23,27 @@ class LoanController extends Controller
             'amount' => 'required|numeric|min:1'
         ]);
 
-        // 🧠 Calculate savings (Only actual contributions count towards the 100% policy)
-        $totalSaved = Contribution::where('book_id', $book->id)
+        // 🧠 Calculate savings (Only base contributions count towards loan ceiling)
+        $totalSaved = \App\Models\Contribution::where('book_id', $book->id)
             ->where('is_missed', false)
             ->sum('contribution');
 
-        $maxLoan = round($totalSaved, 2);
-
-        // Policy: Loan amount must be EXACTLY 100% of total savings
-        if (abs($request->amount - $maxLoan) > 0.01) {
+        // Policy: Loan must be exactly 100% of savings
+        if (abs($request->amount - $totalSaved) > 0.01) {
             return response()->json([
-                'error' => 'Loan amount must be exactly GH₵ ' . number_format($maxLoan, 2) . ' (100% of savings).'
+                'error' => 'Loan amount must be exactly equivalent to your total savings (GH₵ ' . number_format($totalSaved, 2) . ')'
             ], 400);
         }
 
         // 🚫 Check existing loan
-        if ($book->loans()->where('status', 'pending')->exists()) {
+        if ($book->loans()->whereIn('status', ['pending', 'active', 'defaulted'])->exists()) {
             return response()->json([
                 'error' => 'Clear existing loan first'
             ], 400);
         }
 
-        $interest = 0.10 * $request->amount;
+        $rate = \App\Models\Setting::val('loan_interest_rate', 10) / 100;
+        $interest = $rate * $request->amount;
 
         $loan = Loan::create([
             'user_id' => auth()->id(),

@@ -22,8 +22,8 @@ mount(function () {
     $this->welfare_amount = Setting::val('welfare_amount', '10');
     $this->penalty_amount = Setting::val('penalty_amount', '6');
     $this->loan_interest_rate = Setting::val('loan_interest_rate', '10');
-    $this->allow_loan_extensions = (bool)Setting::val('allow_loan_extensions', false);
-    $this->auto_apply_penalties = (bool)Setting::val('auto_apply_penalties', false);
+    $this->allow_loan_extensions = Setting::val('allow_loan_extensions', '0') === '1';
+    $this->auto_apply_penalties = Setting::val('auto_apply_penalties', '0') === '1';
 });
 
 $saveSettings = function () {
@@ -31,6 +31,8 @@ $saveSettings = function () {
     Setting::updateOrCreate(['key' => 'welfare_amount'], ['value' => $this->welfare_amount, 'description' => 'Weekly welfare deduction GH₵']);
     Setting::updateOrCreate(['key' => 'penalty_amount'], ['value' => $this->penalty_amount, 'description' => 'Penalty charged for late payments']);
     Setting::updateOrCreate(['key' => 'loan_interest_rate'], ['value' => $this->loan_interest_rate, 'description' => 'Default percentage interest rate on loans']);
+    Setting::updateOrCreate(['key' => 'allow_loan_extensions'], ['value' => $this->allow_loan_extensions ? '1' : '0']);
+    Setting::updateOrCreate(['key' => 'auto_apply_penalties'], ['value' => $this->auto_apply_penalties ? '1' : '0']);
 
     session()->flash('success', 'Core Application Settings Saved!');
 };
@@ -131,7 +133,7 @@ $changePassword = function () {
               <div class="setting-desc">Permit borrowers to extend due dates</div>
           </div>
           <div class="setting-control">
-              <button wire:click="toggleExtension" class="toggle {{ $allow_loan_extensions ? 'on' : 'off' }}"></button>
+              <button class="toggle {{ $allow_loan_extensions ? 'on' : 'off' }}" wire:click="$set('allow_loan_extensions', {{ !$allow_loan_extensions ? 'true' : 'false' }}); saveSettings()"></button>
           </div>
         </div>
         
@@ -141,7 +143,7 @@ $changePassword = function () {
               <div class="setting-desc">System applies GH₵ automatically on Sunday PM</div>
           </div>
           <div class="setting-control">
-              <button wire:click="togglePenalties" class="toggle {{ $auto_apply_penalties ? 'on' : 'off' }}"></button>
+              <button class="toggle {{ $auto_apply_penalties ? 'on' : 'off' }}" wire:click="$set('auto_apply_penalties', {{ !$auto_apply_penalties ? 'true' : 'false' }}); saveSettings()"></button>
           </div>
         </div>
 

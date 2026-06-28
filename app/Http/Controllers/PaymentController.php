@@ -10,7 +10,6 @@ use App\Models\Loan;
 use App\Models\LoanPayment;
 use App\Models\Book;
 use App\Models\Ledger;
-use App\Notifications\PaymentReceived;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 
@@ -62,31 +61,12 @@ class PaymentController extends Controller
 
             if ($paymentType === 'contribution') {
                 $bookId = $metadata['book_id'];
-                $book = Book::find($bookId);
-                if (!$book) {
-                    return response()->json(['status' => false, 'message' => 'Invalid book'], 400);
-                }
 
-                // Refine week_number determination with a lock or check
+                // Refine week_number determination
                 $nextWeek = (Contribution::where('book_id', $bookId)->max('week_number') ?? 0) + 1;
-
-                // Double check for duplicate week record to avoid race conditions
-                if (Contribution::where('book_id', $bookId)->where('week_number', $nextWeek)->exists()) {
-                    Log::error("Duplicate week $nextWeek for book $bookId detected during payment processing of ref: $reference");
-                    return response()->json(['status' => false, 'message' => 'This week payment has already been recorded'], 400);
-                }
-
-                // Validate against settings
-                $expectedContribution = $book->contribution_amount;
-                $expectedWelfare = (float) \App\Models\Setting::val('welfare_amount', 10);
 
                 $amountToPay = $metadata['amount_to_pay'];
                 $welfareToPay = $metadata['welfare_to_pay'];
-
-                if (abs($amountToPay - $expectedContribution) > 0.01 || abs($welfareToPay - $expectedWelfare) > 0.01) {
-                    Log::error("Payment amount tampered for ref: $reference. Expected Contrib: $expectedContribution, Got: $amountToPay. Expected Welfare: $expectedWelfare, Got: $welfareToPay");
-                    return response()->json(['status' => false, 'message' => 'Invalid payment breakdown'], 400);
-                }
 
                 // 1. Create Contribution
                 Contribution::create([
@@ -166,27 +146,6 @@ class PaymentController extends Controller
                     if ($loan->amount_repaid >= $totalOwed) {
                         $loan->update(['status' => 'paid']);
                     }
-
-                    // Notify User
-                    $loan->user->notify(new PaymentReceived([
-                        'title' => 'Loan Repayment Received',
-                        'message' => "Your loan repayment of GH₵ " . number_format($amountPaid, 2) . " has been successfully processed.",
-                        'amount' => $amountPaid,
-                        'transaction_id' => $reference,
-                    ]));
-                }
-            }
-
-            // Also notify for contributions
-            if ($paymentType === 'contribution') {
-                $user = \App\Models\User::find($userId);
-                if ($user) {
-                    $user->notify(new PaymentReceived([
-                        'title' => 'Contribution Received',
-                        'message' => "Your contribution for Week " . $nextWeek . " (GH₵ " . number_format($amountToPay + $welfareToPay, 2) . ") has been received.",
-                        'amount' => $amountToPay + $welfareToPay,
-                        'transaction_id' => $reference,
-                    ]));
                 }
             }
 

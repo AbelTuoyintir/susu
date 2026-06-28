@@ -7,6 +7,9 @@ use Livewire\Volt\Volt;
 
 class VoltServiceProvider extends ServiceProvider
 {
+    /** @var bool */
+    private static bool $mounted = false;
+
     /**
      * Register services.
      */
@@ -20,10 +23,19 @@ class VoltServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Mount Volt component views (required so routes like pages.clients.settings resolve).
-        // Keep this to a single mount to avoid duplicate Volt anonymous component compilation.
+        // Prevent Volt anonymous component compilation from being executed twice,
+        // which triggers:
+        // "Cannot redeclare Livewire\\Volt\\Component@anonymous::mount()".
+        if (self::$mounted) {
+            return;
+        }
+
+        self::$mounted = true;
+
         Volt::mount([
             resource_path('views/livewire'),
         ]);
     }
+
 }
+

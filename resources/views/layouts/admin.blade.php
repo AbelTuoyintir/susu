@@ -355,7 +355,14 @@
       <span style="color:var(--text3);font-size:12px">⌕</span>
       <input type="text" placeholder="Search anything…">
     </div>
-    <a href="/notifications" class="icon-btn {{ auth()->user()->unreadNotifications->count() > 0 ? 'notif-dot' : '' }}" wire:navigate style="text-decoration:none;">🔔</a>
+    <a href="/notifications" class="icon-btn {{ auth()->user()->unreadNotifications->count() > 0 ? 'notif-dot' : '' }}" wire:navigate style="text-decoration:none; position:relative;">
+      🔔
+      @if(auth()->user()->unreadNotifications->count() > 0)
+        <span style="position:absolute; top:-5px; right:-5px; background:var(--danger); color:#fff; font-size:9px; font-weight:600; min-width:14px; height:14px; border-radius:10px; display:flex; align-items:center; justify-content:center; border:2px solid var(--bg2);">
+          {{ auth()->user()->unreadNotifications->count() }}
+        </span>
+      @endif
+    </a>
     <a href="/settings" class="icon-btn" wire:navigate style="text-decoration:none;">⚙</a>
   </div>
 </header>

@@ -66,8 +66,16 @@ $sendAnnouncement = function () {
 with(function () {
     return [
         'recentAnnouncements' => Announcement::with('user')->latest()->take(5)->get(),
+        'adminNotifications' => auth()->user()->notifications()->latest()->take(10)->get(),
     ];
 });
+
+$markAsRead = function ($id) {
+    $notification = auth()->user()->notifications()->find($id);
+    if ($notification) {
+        $notification->markAsRead();
+    }
+};
 
 ?>
 
@@ -128,10 +136,11 @@ with(function () {
     </div>
 
     <!-- LOG MODULE -->
-    <div class="card">
-      <div class="card-header"><div class="card-title">Recent Announcements</div></div>
-      <div>
-        @forelse($recentAnnouncements as $ann)
+    <div style="display:flex; flex-direction:column; gap:16px;">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Recent Announcements</div></div>
+        <div>
+          @forelse($recentAnnouncements as $ann)
         <div class="notif-item">
           <div class="notif-icon-wrap" style="background:{{ $ann->type === 'alert' ? 'var(--danger-bg)' : ($ann->type === 'success' ? 'var(--success-bg)' : 'var(--info-bg)') }}">
             {{ $ann->type === 'alert' ? '⚠️' : ($ann->type === 'success' ? '✅' : '📣') }}
@@ -142,9 +151,33 @@ with(function () {
             <div class="notif-time">{{ $ann->created_at->diffForHumans() }} • Sent by {{ $ann->user->name ?? 'Admin' }}</div>
           </div>
         </div>
-        @empty
-        <div style="text-align:center; padding: 20px; color:var(--text3);">No recent announcements.</div>
-        @endforelse
+          @empty
+          <div style="text-align:center; padding: 20px; color:var(--text3);">No recent announcements.</div>
+          @endforelse
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">System Notifications</div></div>
+        <div>
+          @forelse($adminNotifications as $notif)
+          <div class="notif-item" style="opacity: {{ $notif->read_at ? '0.6' : '1' }}">
+            <div class="notif-icon-wrap" style="background:var(--accent-dim); color:var(--accent)">
+              🔔
+            </div>
+            <div class="notif-content">
+              <div class="notif-title">{{ $notif->data['title'] ?? 'Notification' }}</div>
+              <div class="notif-msg">{{ $notif->data['message'] ?? '' }}</div>
+              <div class="notif-time">{{ $notif->created_at->diffForHumans() }}</div>
+              @if(!$notif->read_at)
+                <button wire:click="markAsRead('{{ $notif->id }}')" class="btn btn-xs btn-outline" style="margin-top:5px;">Mark as Read</button>
+              @endif
+            </div>
+          </div>
+          @empty
+          <div style="text-align:center; padding: 20px; color:var(--text3);">No system notifications.</div>
+          @endforelse
+        </div>
       </div>
     </div>
   </div>

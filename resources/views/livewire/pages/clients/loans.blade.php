@@ -44,6 +44,15 @@ $updatedAmount = function ($val) {
 };
 
 $submitRequest = function () {
+    // SECURITY: Re-calculate limit on backend to prevent client-side manipulation
+    $book = Book::find($this->selectedBookId);
+    if ($book) {
+        $this->savings = Contribution::where('book_id', $book->id)
+            ->where('is_missed', false)
+            ->sum('contribution');
+        $this->maxLoanLimit = round($this->savings, 2);
+    }
+
     $this->validate([
         'selectedBookId' => 'required|exists:books,id',
         'amount' => 'required|numeric|min:1|max:' . $this->maxLoanLimit . '|in:' . $this->maxLoanLimit,

@@ -23,16 +23,17 @@ class LoanController extends Controller
             'amount' => 'required|numeric|min:1'
         ]);
 
-        // 🧠 Calculate savings
-        $totalSaved = Ledger::where('book_id', $book->id)
-            ->whereIn('type', ['contribution', 'welfare'])
-            ->sum('amount');
+        // 🧠 Calculate savings (Only actual contributions count towards the 100% policy)
+        $totalSaved = Contribution::where('book_id', $book->id)
+            ->where('is_missed', false)
+            ->sum('contribution');
 
-        $maxLoan = $totalSaved * 0.7;
+        $maxLoan = round($totalSaved, 2);
 
-        if ($request->amount > $maxLoan) {
+        // Policy: Loan amount must be EXACTLY 100% of total savings
+        if (abs($request->amount - $maxLoan) > 0.01) {
             return response()->json([
-                'error' => 'Loan exceeds limit'
+                'error' => 'Loan amount must be exactly GH₵ ' . number_format($maxLoan, 2) . ' (100% of savings).'
             ], 400);
         }
 

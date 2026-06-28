@@ -37,6 +37,18 @@ $saveSettings = function () {
     session()->flash('success', 'Core Application Settings Saved!');
 };
 
+$toggleExtension = function () {
+    $this->allow_loan_extensions = !$this->allow_loan_extensions;
+    Setting::updateOrCreate(['key' => 'allow_loan_extensions'], ['value' => $this->allow_loan_extensions]);
+    session()->flash('success', 'Loan extension policy updated!');
+};
+
+$togglePenalties = function () {
+    $this->auto_apply_penalties = !$this->auto_apply_penalties;
+    Setting::updateOrCreate(['key' => 'auto_apply_penalties'], ['value' => $this->auto_apply_penalties]);
+    session()->flash('success', 'Penalty policy updated!');
+};
+
 $changePassword = function () {
     // For MVP Simulation
     session()->flash('success', 'Security Settings (Password) Updated!');

@@ -259,7 +259,14 @@
   </div>
   <div class="topbar-right">
     <div style="position:relative;">
-        <a href="/client/announcements" class="icon-btn {{ auth()->user()->unreadNotifications->count() > 0 ? 'notif-dot' : '' }}" wire:navigate style="text-decoration:none;">🔔</a>
+        <a href="/client/announcements" class="icon-btn {{ auth()->user()->unreadNotifications->count() > 0 ? 'notif-dot' : '' }}" wire:navigate style="text-decoration:none;">
+          🔔
+          @if(auth()->user()->unreadNotifications->count() > 0)
+            <span style="position:absolute; top:-5px; right:-5px; background:var(--danger); color:#fff; font-size:9px; font-weight:600; min-width:14px; height:14px; border-radius:10px; display:flex; align-items:center; justify-content:center; border:2px solid var(--bg2);">
+              {{ auth()->user()->unreadNotifications->count() }}
+            </span>
+          @endif
+        </a>
     </div>
     <a href="/client/settings" class="icon-btn" wire:navigate style="text-decoration:none;">⚙</a>
   </div>

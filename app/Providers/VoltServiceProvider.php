@@ -20,9 +20,10 @@ class VoltServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Mount Volt component views (required so routes like pages.clients.settings resolve).
+        // Keep this to a single mount to avoid duplicate Volt anonymous component compilation.
         Volt::mount([
-            config('livewire.view_path', resource_path('views/livewire')),
-            resource_path('views/pages'),
+            resource_path('views/livewire'),
         ]);
     }
 }

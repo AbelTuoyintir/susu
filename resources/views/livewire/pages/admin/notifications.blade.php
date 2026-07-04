@@ -48,13 +48,15 @@ $sendAnnouncement = function () {
         'recipientGroup' => 'required',
     ]);
 
-    Announcement::create([
+    $announcement = Announcement::create([
         'title' => $this->title,
         'content' => $this->message,
         'type' => $this->type,
         'target_group' => $this->recipientGroup,
         'user_id' => auth()->id(),
     ]);
+
+    \App\Jobs\SendAnnouncementJob::dispatch($announcement);
     
     session()->flash('success', "Announcement dispatched successfully!");
     

@@ -16,6 +16,7 @@ state([
     'amount' => '',
     'interest' => '',
     'due_date' => date('Y-m-d', strtotime('+30 days')),
+    'savings' => 0,
 ]);
 
 rules([
@@ -36,8 +37,31 @@ with(function () {
     ];
 });
 
+$updatedBookId = function ($val) {
+    if (!$val) {
+        $this->savings = 0;
+        return;
+    }
+    $this->savings = \App\Models\Contribution::where('book_id', $val)
+        ->where('is_missed', false)
+        ->sum('contribution');
+    $this->amount = $this->savings;
+};
+
 $save = function () {
-    $this->validate();
+    $this->savings = \App\Models\Contribution::where('book_id', $this->book_id)
+        ->where('is_missed', false)
+        ->sum('contribution');
+
+    $this->validate([
+        'user_id' => 'required|exists:users,id',
+        'book_id' => 'required|exists:books,id',
+        'amount' => 'required|numeric|min:1|in:' . $this->savings,
+        'interest' => 'required|numeric|min:0',
+        'due_date' => 'required|date|after:today',
+    ], [
+        'amount.in' => 'The loan amount must be exactly equivalent to the user\'s total savings (GH₵ ' . number_format($this->savings, 2) . ').',
+    ]);
 
     Loan::create([
         'user_id' => $this->user_id,
@@ -77,7 +101,7 @@ $save = function () {
 
           <div>
             <label style="font-size:var(--fs-sm);color:var(--text3);margin-bottom:4px;display:block;">Select Target Book *</label>
-            <select wire:model="book_id" class="filter-input" style="width:100%" required @if(!$user_id) disabled @endif>
+            <select wire:model.live="book_id" class="filter-input" style="width:100%" required @if(!$user_id) disabled @endif>
                 <option value="">-- Choose Book --</option>
                 @foreach($booksList as $book)
                     <option value="{{ $book->id }}">#{{ $book->book_number }}</option>
@@ -89,6 +113,9 @@ $save = function () {
           <div>
             <label style="font-size:var(--fs-sm);color:var(--text3);margin-bottom:4px;display:block;">Principal Amount (GH₵) *</label>
             <input type="number" step="0.01" wire:model.live="amount" class="filter-input" style="width:100%" placeholder="e.g. 500" required>
+            @if($book_id)
+                <span style="font-size:10px; color:var(--text3); margin-top:4px; display:block;">Required: GH₵ {{ number_format($savings, 2) }} (100% savings)</span>
+            @endif
             @error('amount') <span style="color:var(--danger);font-size:12px;">{{ $message }}</span> @enderror
           </div>
         </div>

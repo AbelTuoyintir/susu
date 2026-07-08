@@ -156,13 +156,14 @@ class PaymentController extends Controller
                 $amountPaid = $metadata['loan_payment_amount'];
 
                 $loan = Loan::find($loanId);
-                if ($loan && $loan->user_id == $userId) {
+                if ($loan) {
+                    // SECURITY: Prevent overpayment
                     $totalOwed = $loan->amount + $loan->interest;
-                    $outstanding = max(0, $totalOwed - $loan->amount_repaid);
+                    $remainingBalance = $totalOwed - $loan->amount_repaid;
 
-                    if ($amountPaid > $outstanding + 0.01) {
-                        Log::error("Loan overpayment attempt for loan #$loanId ref: $reference. Owed: $outstanding, Paid: $amountPaid");
-                        return response()->json(['status' => false, 'message' => 'Payment exceeds outstanding balance'], 400);
+                    if ($amountPaid > $remainingBalance + 0.01) {
+                        Log::error("Loan overpayment attempt for loan $loanId. Owed: $remainingBalance, Paid: $amountPaid");
+                        return response()->json(['status' => false, 'message' => 'Payment amount exceeds outstanding balance'], 400);
                     }
 
                     LoanPayment::create([

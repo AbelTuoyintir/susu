@@ -4,6 +4,11 @@ use function Livewire\Volt\layout;
 use function Livewire\Volt\state;
 use function Livewire\Volt\with;
 use App\Models\Announcement;
+use App\Models\User;
+use App\Models\Contribution;
+use App\Models\Loan;
+use App\Notifications\SystemNotification;
+use App\Jobs\SendAnnouncementJob;
 
 layout('layouts.admin');
 
@@ -56,9 +61,10 @@ $sendAnnouncement = function () {
         'user_id' => auth()->id(),
     ]);
 
-    \App\Jobs\SendAnnouncementJob::dispatch($announcement);
+    // Queue the dispatch of System Notifications to avoid timeout
+    SendAnnouncementJob::dispatch($this->title, $this->message, $this->type, $this->recipientGroup);
     
-    session()->flash('success', "Announcement dispatched successfully!");
+    session()->flash('success', "Announcement dispatched successfully to members!");
     
     // Clear draft
     $this->title = '';

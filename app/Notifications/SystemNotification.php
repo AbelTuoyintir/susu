@@ -9,18 +9,14 @@ class SystemNotification extends Notification
 {
     use Queueable;
 
-    protected $title;
-    protected $message;
-    protected $type;
+    protected $data;
 
     /**
      * Create a new notification instance.
      */
-    public function __construct($title, $message, $type = 'general')
+    public function __construct($data)
     {
-        $this->title = $title;
-        $this->message = $message;
-        $this->type = $type;
+        $this->data = $data;
     }
 
     /**
@@ -41,9 +37,9 @@ class SystemNotification extends Notification
     public function toArray(object $notifiable): array
     {
         return [
-            'title' => $this->title,
-            'message' => $this->message,
-            'type' => $this->type,
+            'title' => $this->data['title'] ?? 'System Notification',
+            'message' => $this->data['message'] ?? '',
+            'type' => $this->data['type'] ?? 'info',
         ];
     }
 }

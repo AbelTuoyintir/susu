@@ -11,20 +11,26 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Collection;
 
 class SendAnnouncementJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected $announcement;
+    protected $title;
+    protected $message;
+    protected $type;
+    protected $recipientGroup;
 
     /**
      * Create a new job instance.
      */
-    public function __construct($announcement)
+    public function __construct($title, $message, $type, $recipientGroup)
     {
-        $this->announcement = $announcement;
+        $this->title = $title;
+        $this->message = $message;
+        $this->type = $type;
+        $this->recipientGroup = $recipientGroup;
     }
 
     /**
@@ -32,32 +38,27 @@ class SendAnnouncementJob implements ShouldQueue
      */
     public function handle(): void
     {
-        $targetGroup = $this->announcement->target_group;
         $users = collect();
-
-        switch ($targetGroup) {
-            case 'All Users':
-                $users = User::all();
-                break;
-            case 'Defaulters Only':
-                $userIds = Contribution::where('is_missed', true)->pluck('user_id')->unique();
-                $users = User::whereIn('id', $userIds)->get();
-                break;
-            case 'Loan Overdue':
-                $userIds = Loan::where('status', 'defaulted')->pluck('user_id')->unique();
-                $users = User::whereIn('id', $userIds)->get();
-                break;
-            case 'Active Users':
-                $users = User::where('status', 'active')->get();
-                break;
+        if ($this->recipientGroup === 'All Users') {
+            $users = User::all();
+        } elseif ($this->recipientGroup === 'Defaulters Only') {
+            $defaulterIds = Contribution::where('is_missed', true)->pluck('user_id')->unique();
+            $users = User::whereIn('id', $defaulterIds)->get();
+        } elseif ($this->recipientGroup === 'Loan Overdue') {
+            $overdueUserIds = Loan::where('status', 'defaulted')->pluck('user_id')->unique();
+            $users = User::whereIn('id', $overdueUserIds)->get();
+        } elseif ($this->recipientGroup === 'Active Users') {
+            $users = User::whereHas('books', function($q) {
+                $q->where('status', 'active');
+            })->get();
         }
 
-        if ($users->isNotEmpty()) {
-            Notification::send($users, new SystemNotification(
-                $this->announcement->title,
-                $this->announcement->content,
-                $this->announcement->type
-            ));
+        foreach ($users as $user) {
+            $user->notify(new SystemNotification([
+                'title' => $this->title,
+                'message' => $this->message,
+                'type' => $this->type,
+            ]));
         }
     }
 }

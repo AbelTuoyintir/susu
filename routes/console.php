@@ -26,3 +26,6 @@ Artisan::command('remind:sharing', function () {
     $this->call(\App\Console\Commands\RemindContributionSharing::class);
 })->describe('Remind admin to share contributions for books that ended');
 
+Artisan::command('penalties:apply', function () {
+    $this->call(\App\Console\Commands\ApplyWeeklyPenalties::class);
+})->describe('Automatically apply penalties for missed contributions');

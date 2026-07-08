@@ -13,6 +13,7 @@ use App\Models\Ledger;
 use App\Notifications\PaymentReceived;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 
 class PaymentController extends Controller
 {
@@ -130,6 +131,26 @@ class PaymentController extends Controller
                     'paid_at' => now(),
                 ]);
 
+                // Notify User
+                $user = \App\Models\User::find($userId);
+                if ($user) {
+                    $user->notify(new PaymentReceived([
+                        'title' => 'Contribution Received',
+                        'message' => "Your contribution for Week " . $nextWeek . " (GH₵ " . number_format($amountToPay + $welfareToPay, 2) . ") has been received.",
+                        'amount' => $amountToPay + $welfareToPay,
+                        'transaction_id' => $reference,
+                    ]));
+
+                    // Notify Admins
+                    $admins = \App\Models\User::whereIn('role', ['admin', 'super_admin'])->get();
+                    Notification::send($admins, new PaymentReceived([
+                        'title' => 'Contribution Received (Admin)',
+                        'message' => "A contribution of GH₵ " . number_format($amountToPay + $welfareToPay, 2) . " has been received from " . $user->name . " for Week $nextWeek.",
+                        'amount' => $amountToPay + $welfareToPay,
+                        'transaction_id' => $reference,
+                    ]));
+                }
+
             } elseif ($paymentType === 'loan') {
                 $loanId = $metadata['loan_id'];
                 $amountPaid = $metadata['loan_payment_amount'];
@@ -183,17 +204,13 @@ class PaymentController extends Controller
                         'amount' => $amountPaid,
                         'transaction_id' => $reference,
                     ]));
-                }
-            }
 
-            // Also notify for contributions
-            if ($paymentType === 'contribution') {
-                $user = \App\Models\User::find($userId);
-                if ($user) {
-                    $user->notify(new PaymentReceived([
-                        'title' => 'Contribution Received',
-                        'message' => "Your contribution for Week " . $nextWeek . " (GH₵ " . number_format($amountToPay + $welfareToPay, 2) . ") has been received.",
-                        'amount' => $amountToPay + $welfareToPay,
+                    // Notify Admins
+                    $admins = \App\Models\User::whereIn('role', ['admin', 'super_admin'])->get();
+                    Notification::send($admins, new PaymentReceived([
+                        'title' => 'Loan Repayment Received (Admin)',
+                        'message' => "A loan repayment of GH₵ " . number_format($amountPaid, 2) . " has been received from " . $loan->user->name . ".",
+                        'amount' => $amountPaid,
                         'transaction_id' => $reference,
                     ]));
                 }

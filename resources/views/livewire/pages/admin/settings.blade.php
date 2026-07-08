@@ -15,6 +15,8 @@ state([
     'loan_interest_rate' => '',
     'allow_loan_extensions' => false,
     'auto_apply_penalties' => false,
+    'current_password' => '',
+    'new_password' => '',
 ]);
 
 mount(function () {
@@ -50,7 +52,17 @@ $togglePenalties = function () {
 };
 
 $changePassword = function () {
-    // For MVP Simulation
+    $this->validate([
+        'current_password' => ['required', 'string', 'current_password'],
+        'new_password' => ['required', 'string', 'min:8'],
+    ]);
+
+    auth()->user()->update([
+        'password' => Hash::make($this->new_password),
+    ]);
+
+    $this->reset(['current_password', 'new_password']);
+
     session()->flash('success', 'Security Settings (Password) Updated!');
 };
 
@@ -156,11 +168,16 @@ $changePassword = function () {
 
         <form wire:submit="changePassword">
             <div style="display:flex;flex-direction:column;gap:8px;">
-                <input type="password" class="filter-input" placeholder="Current Password" required>
-                <input type="password" class="filter-input" placeholder="New Password" required>
+                <input type="password" wire:model="current_password" class="filter-input" placeholder="Current Password" required>
+                @error('current_password') <span style="color:var(--danger);font-size:11px;">{{ $message }}</span> @enderror
+                <input type="password" wire:model="new_password" class="filter-input" placeholder="New Password" required>
+                @error('new_password') <span style="color:var(--danger);font-size:11px;">{{ $message }}</span> @enderror
             </div>
             <div style="margin-top:12px; text-align:right;">
-                <button type="submit" class="btn btn-outline" style="padding:8px 16px;">Update Password</button>
+                <button type="submit" class="btn btn-outline" style="padding:8px 16px;">
+                    <span wire:loading.remove wire:target="changePassword">Update Password</span>
+                    <span wire:loading wire:target="changePassword">Updating...</span>
+                </button>
             </div>
         </form>
 

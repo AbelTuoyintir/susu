@@ -53,7 +53,7 @@ $sendAnnouncement = function () {
         'recipientGroup' => 'required',
     ]);
 
-    Announcement::create([
+    $announcement = Announcement::create([
         'title' => $this->title,
         'content' => $this->message,
         'type' => $this->type,

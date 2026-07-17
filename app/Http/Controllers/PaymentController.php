@@ -157,13 +157,19 @@ class PaymentController extends Controller
 
                 $loan = Loan::find($loanId);
                 if ($loan) {
+                    // SECURITY: Ensure user owns the loan to prevent cross-user payment fraud
+                    if ($loan->user_id != $userId) {
+                        Log::error("Security check failed: Loan {$loanId} does not belong to user {$userId}.");
+                        return response()->json(['status' => false, 'message' => 'Unauthorized payment'], 403);
+                    }
+
                     // SECURITY: Prevent overpayment
                     $totalOwed = $loan->amount + $loan->interest;
                     $remainingBalance = $totalOwed - $loan->amount_repaid;
 
                     if ($amountPaid > $remainingBalance + 0.01) {
                         Log::error("Loan overpayment attempt for loan $loanId. Owed: $remainingBalance, Paid: $amountPaid");
-                        return response()->json(['status' => false, 'message' => 'Payment amount exceeds outstanding balance'], 400);
+                        return response()->json(['status' => false, 'message' => 'Payment exceeds outstanding balance'], 400);
                     }
 
                     LoanPayment::create([

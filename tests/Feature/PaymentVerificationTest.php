@@ -65,7 +65,7 @@ class PaymentVerificationTest extends TestCase
         $response = $this->postJson(route('payment.verify'), ['reference' => 'test_ref']);
 
         $response->assertStatus(400);
-        $this->assertEquals('Payment exceeds outstanding balance', $response->json('message'));
+        $this->assertEquals('Payment amount exceeds outstanding balance', $response->json('message'));
     }
 
     public function test_payment_verification_ensures_user_owns_loan()

@@ -157,6 +157,12 @@ class PaymentController extends Controller
 
                 $loan = Loan::find($loanId);
                 if ($loan) {
+                    // SECURITY: Ensure user owns loan to prevent fraud or cross-user payment error
+                    if ($loan->user_id != $userId) {
+                        Log::error("Unauthorized payment attempt on loan $loanId. Loan owner: {$loan->user_id}, Payment user: $userId");
+                        return response()->json(['status' => false, 'message' => 'Unauthorized payment attempt'], 400);
+                    }
+
                     // SECURITY: Prevent overpayment
                     $totalOwed = $loan->amount + $loan->interest;
                     $remainingBalance = $totalOwed - $loan->amount_repaid;

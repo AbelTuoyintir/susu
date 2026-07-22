@@ -24,7 +24,16 @@ class RemindContributionSharing extends Command
 
         foreach ($endedBooks as $book) {
             foreach ($admins as $admin) {
-                $admin->notify(new ContributionSharingReminder($book));
+                // SPAM PREVENTION: Check if we already sent a reminder in the last 24 hours for this book
+                $alreadyNotified = $admin->notifications()
+                    ->where('data->book_id', $book->id)
+                    ->where('data->type', 'sharing_reminder')
+                    ->where('created_at', '>=', Carbon::now()->subDay())
+                    ->exists();
+
+                if (!$alreadyNotified) {
+                    $admin->notify(new ContributionSharingReminder($book));
+                }
             }
         }
 

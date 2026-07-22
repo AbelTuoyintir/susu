@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\DB;
 use App\Models\Payment;
 use App\Models\Contribution;
 use App\Models\Loan;
@@ -63,139 +64,178 @@ class PaymentController extends Controller
 
             if ($paymentType === 'contribution') {
                 $bookId = $metadata['book_id'];
-                $book = Book::find($bookId);
-                if (!$book) {
-                    return response()->json(['status' => false, 'message' => 'Invalid book'], 400);
-                }
 
-                // Refine week_number determination with a lock or check
-                $nextWeek = (Contribution::where('book_id', $bookId)->max('week_number') ?? 0) + 1;
+                try {
+                    $result = DB::transaction(function () use ($bookId, $userId, $reference, $actualAmountPaid, $metadata) {
+                        $book = Book::where('id', $bookId)->lockForUpdate()->first();
+                        if (!$book) {
+                            return ['status' => false, 'message' => 'Invalid book', 'code' => 400];
+                        }
 
-                // Double check for duplicate week record to avoid race conditions
-                if (Contribution::where('book_id', $bookId)->where('week_number', $nextWeek)->exists()) {
-                    Log::error("Duplicate week $nextWeek for book $bookId detected during payment processing of ref: $reference");
-                    return response()->json(['status' => false, 'message' => 'This week payment has already been recorded'], 400);
-                }
+                        // Refine week_number determination with a lock or check
+                        $nextWeek = (Contribution::where('book_id', $bookId)->max('week_number') ?? 0) + 1;
 
-                // Validate against settings
-                $expectedContribution = $book->contribution_amount;
-                $expectedWelfare = (float) \App\Models\Setting::val('welfare_amount', 10);
+                        // Double check for duplicate week record to avoid race conditions
+                        if (Contribution::where('book_id', $bookId)->where('week_number', $nextWeek)->exists()) {
+                            Log::error("Duplicate week $nextWeek for book $bookId detected during payment processing of ref: $reference");
+                            return ['status' => false, 'message' => 'This week payment has already been recorded', 'code' => 400];
+                        }
 
-                $amountToPay = $metadata['amount_to_pay'];
-                $welfareToPay = $metadata['welfare_to_pay'];
+                        // Validate against settings
+                        $expectedContribution = $book->contribution_amount;
+                        $expectedWelfare = (float) \App\Models\Setting::val('welfare_amount', 10);
 
-                if (abs($amountToPay - $expectedContribution) > 0.01 || abs($welfareToPay - $expectedWelfare) > 0.01) {
-                    Log::error("Payment amount tampered for ref: $reference. Expected Contrib: $expectedContribution, Got: $amountToPay. Expected Welfare: $expectedWelfare, Got: $welfareToPay");
-                    return response()->json(['status' => false, 'message' => 'Invalid payment breakdown'], 400);
-                }
+                        $amountToPay = $metadata['amount_to_pay'];
+                        $welfareToPay = $metadata['welfare_to_pay'];
 
-                // 1. Create Contribution
-                Contribution::create([
-                    'user_id' => $userId,
-                    'book_id' => $bookId,
-                    'week_number' => $nextWeek,
-                    'contribution' => $amountToPay,
-                    'welfare' => $welfareToPay,
-                    'penalty' => 0,
-                    'is_missed' => false,
-                ]);
+                        if (abs($amountToPay - $expectedContribution) > 0.01 || abs($welfareToPay - $expectedWelfare) > 0.01) {
+                            Log::error("Payment amount tampered for ref: $reference. Expected Contrib: $expectedContribution, Got: $amountToPay. Expected Welfare: $expectedWelfare, Got: $welfareToPay");
+                            return ['status' => false, 'message' => 'Invalid payment breakdown', 'code' => 400];
+                        }
 
-                // 2. Create Ledger entries
-                Ledger::create([
-                    'user_id' => $userId,
-                    'book_id' => $bookId,
-                    'type' => 'contribution',
-                    'amount' => $amountToPay,
-                    'week_number' => $nextWeek,
-                    'description' => "Contribution for Week $nextWeek (via Paystack)",
-                ]);
+                        // 1. Create Contribution
+                        Contribution::create([
+                            'user_id' => $userId,
+                            'book_id' => $bookId,
+                            'week_number' => $nextWeek,
+                            'contribution' => $amountToPay,
+                            'welfare' => $welfareToPay,
+                            'penalty' => 0,
+                            'is_missed' => false,
+                        ]);
 
-                Ledger::create([
-                    'user_id' => $userId,
-                    'book_id' => $bookId,
-                    'type' => 'welfare',
-                    'amount' => $welfareToPay,
-                    'week_number' => $nextWeek,
-                    'description' => "Welfare for Week $nextWeek (via Paystack)",
-                ]);
+                        // 2. Create Ledger entries
+                        Ledger::create([
+                            'user_id' => $userId,
+                            'book_id' => $bookId,
+                            'type' => 'contribution',
+                            'amount' => $amountToPay,
+                            'week_number' => $nextWeek,
+                            'description' => "Contribution for Week $nextWeek (via Paystack)",
+                        ]);
 
-                // 3. Create Contribution Payment record
-                Payment::create([
-                    'user_id' => $userId,
-                    'book_id' => $bookId,
-                    'payment_type' => 'contribution',
-                    'transaction_id' => $reference,
-                    'payment_method' => 'card',
-                    'amount_paid' => $actualAmountPaid,
-                    'status' => 'completed',
-                    'paid_at' => now(),
-                ]);
+                        Ledger::create([
+                            'user_id' => $userId,
+                            'book_id' => $bookId,
+                            'type' => 'welfare',
+                            'amount' => $welfareToPay,
+                            'week_number' => $nextWeek,
+                            'description' => "Welfare for Week $nextWeek (via Paystack)",
+                        ]);
 
-                // Notify User
-                $user = \App\Models\User::find($userId);
-                if ($user) {
-                    $user->notify(new PaymentReceived([
-                        'title' => 'Contribution Received',
-                        'message' => "Your contribution for Week " . $nextWeek . " (GH₵ " . number_format($amountToPay + $welfareToPay, 2) . ") has been received.",
-                        'amount' => $amountToPay + $welfareToPay,
-                        'transaction_id' => $reference,
-                    ]));
+                        // 3. Create Contribution Payment record
+                        Payment::create([
+                            'user_id' => $userId,
+                            'book_id' => $bookId,
+                            'payment_type' => 'contribution',
+                            'transaction_id' => $reference,
+                            'payment_method' => 'card',
+                            'amount_paid' => $actualAmountPaid,
+                            'status' => 'completed',
+                            'paid_at' => now(),
+                        ]);
 
-                    // Notify Admins
-                    $admins = \App\Models\User::whereIn('role', ['admin', 'super_admin'])->get();
-                    Notification::send($admins, new PaymentReceived([
-                        'title' => 'Contribution Received (Admin)',
-                        'message' => "A contribution of GH₵ " . number_format($amountToPay + $welfareToPay, 2) . " has been received from " . $user->name . " for Week $nextWeek.",
-                        'amount' => $amountToPay + $welfareToPay,
-                        'transaction_id' => $reference,
-                    ]));
+                        return ['status' => true, 'nextWeek' => $nextWeek, 'amountToPay' => $amountToPay, 'welfareToPay' => $welfareToPay];
+                    });
+
+                    if (!$result['status']) {
+                        return response()->json(['status' => false, 'message' => $result['message']], $result['code']);
+                    }
+
+                    // Notify User
+                    $user = \App\Models\User::find($userId);
+                    if ($user) {
+                        $nextWeek = $result['nextWeek'];
+                        $amountToPay = $result['amountToPay'];
+                        $welfareToPay = $result['welfareToPay'];
+
+                        $user->notify(new PaymentReceived([
+                            'title' => 'Contribution Received',
+                            'message' => "Your contribution for Week " . $nextWeek . " (GH₵ " . number_format($amountToPay + $welfareToPay, 2) . ") has been received.",
+                            'amount' => $amountToPay + $welfareToPay,
+                            'transaction_id' => $reference,
+                        ]));
+
+                        // Notify Admins
+                        $admins = \App\Models\User::whereIn('role', ['admin', 'super_admin'])->get();
+                        Notification::send($admins, new PaymentReceived([
+                            'title' => 'Contribution Received (Admin)',
+                            'message' => "A contribution of GH₵ " . number_format($amountToPay + $welfareToPay, 2) . " has been received from " . $user->name . " for Week $nextWeek.",
+                            'amount' => $amountToPay + $welfareToPay,
+                            'transaction_id' => $reference,
+                        ]));
+                    }
+
+                } catch (\Exception $e) {
+                    Log::error("Database transaction failed during contribution payment verification: " . $e->getMessage());
+                    return response()->json(['status' => false, 'message' => 'An error occurred during payment processing'], 500);
                 }
 
             } elseif ($paymentType === 'loan') {
                 $loanId = $metadata['loan_id'];
                 $amountPaid = $metadata['loan_payment_amount'];
 
-                $loan = Loan::find($loanId);
-                if ($loan) {
-                    // SECURITY: Prevent overpayment
-                    $totalOwed = $loan->amount + $loan->interest;
-                    $remainingBalance = $totalOwed - $loan->amount_repaid;
+                try {
+                    $result = DB::transaction(function () use ($loanId, $userId, $amountPaid, $reference, $actualAmountPaid) {
+                        $loan = Loan::where('id', $loanId)->lockForUpdate()->first();
+                        if (!$loan) {
+                            return ['status' => false, 'message' => 'Invalid loan', 'code' => 400];
+                        }
 
-                    if ($amountPaid > $remainingBalance + 0.01) {
-                        Log::error("Loan overpayment attempt for loan $loanId. Owed: $remainingBalance, Paid: $amountPaid");
-                        return response()->json(['status' => false, 'message' => 'Payment amount exceeds outstanding balance'], 400);
+                        // SECURITY: Prevent cross-user payment fraud
+                        if ($loan->user_id != $userId) {
+                            Log::error("Cross-user payment attempt: metadata user $userId tries to pay for loan owned by " . $loan->user_id);
+                            return ['status' => false, 'message' => 'Unauthorized loan payment', 'code' => 403];
+                        }
+
+                        // SECURITY: Prevent overpayment
+                        $totalOwed = $loan->amount + $loan->interest;
+                        $remainingBalance = $totalOwed - $loan->amount_repaid;
+
+                        if ($amountPaid > $remainingBalance + 0.01) {
+                            Log::error("Loan overpayment attempt for loan $loanId. Owed: $remainingBalance, Paid: $amountPaid");
+                            return ['status' => false, 'message' => 'Payment exceeds outstanding balance', 'code' => 400];
+                        }
+
+                        LoanPayment::create([
+                            'loan_id' => $loan->id,
+                            'amount_paid' => $amountPaid,
+                        ]);
+
+                        // Create Ledger entry for repayment
+                        Ledger::create([
+                            'user_id' => $userId,
+                            'book_id' => $loan->book_id,
+                            'type' => 'repayment',
+                            'amount' => $amountPaid,
+                            'description' => "Loan repayment for Loan #LN-" . sprintf('%04d', $loan->id) . " (via Paystack)",
+                        ]);
+
+                        Payment::create([
+                            'user_id' => $userId,
+                            'loan_id' => $loan->id,
+                            'payment_type' => 'loan_repayment',
+                            'transaction_id' => $reference,
+                            'payment_method' => 'card',
+                            'amount_paid' => $actualAmountPaid,
+                            'status' => 'completed',
+                            'paid_at' => now(),
+                        ]);
+
+                        $loan->refresh();
+                        $totalOwed = $loan->amount + $loan->interest;
+                        if ($loan->amount_repaid >= $totalOwed) {
+                            $loan->update(['status' => 'paid']);
+                        }
+
+                        return ['status' => true, 'loan' => $loan];
+                    });
+
+                    if (!$result['status']) {
+                        return response()->json(['status' => false, 'message' => $result['message']], $result['code']);
                     }
 
-                    LoanPayment::create([
-                        'loan_id' => $loan->id,
-                        'amount_paid' => $amountPaid,
-                    ]);
-
-                    // Create Ledger entry for repayment
-                    Ledger::create([
-                        'user_id' => $userId,
-                        'book_id' => $loan->book_id,
-                        'type' => 'repayment',
-                        'amount' => $amountPaid,
-                        'description' => "Loan repayment for Loan #LN-" . sprintf('%04d', $loan->id) . " (via Paystack)",
-                    ]);
-
-                    Payment::create([
-                        'user_id' => $userId,
-                        'loan_id' => $loan->id,
-                        'payment_type' => 'loan_repayment',
-                        'transaction_id' => $reference,
-                        'payment_method' => 'card',
-                        'amount_paid' => $actualAmountPaid,
-                        'status' => 'completed',
-                        'paid_at' => now(),
-                    ]);
-
-                    $loan->refresh();
-                    $totalOwed = $loan->amount + $loan->interest;
-                    if ($loan->amount_repaid >= $totalOwed) {
-                        $loan->update(['status' => 'paid']);
-                    }
+                    $loan = $result['loan'];
 
                     // Notify User
                     $loan->user->notify(new PaymentReceived([
@@ -213,6 +253,10 @@ class PaymentController extends Controller
                         'amount' => $amountPaid,
                         'transaction_id' => $reference,
                     ]));
+
+                } catch (\Exception $e) {
+                    Log::error("Database transaction failed during loan payment verification: " . $e->getMessage());
+                    return response()->json(['status' => false, 'message' => 'An error occurred during payment processing'], 500);
                 }
             }
 

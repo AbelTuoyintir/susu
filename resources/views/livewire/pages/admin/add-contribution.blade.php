@@ -39,6 +39,22 @@ with(function () {
     ];
 });
 
+$updatedBookId = function ($val) {
+    if (!$val) {
+        $this->week_number = 1;
+        $this->contribution = '';
+        $this->welfare = '';
+        return;
+    }
+
+    $book = Book::find($val);
+    if ($book) {
+        $this->week_number = (Contribution::where('book_id', $val)->max('week_number') ?? 0) + 1;
+        $this->contribution = $book->contribution_amount;
+        $this->welfare = (float) \App\Models\Setting::val('welfare_amount', 10);
+    }
+};
+
 $save = function () {
     $this->validate();
 
@@ -130,7 +146,7 @@ $save = function () {
 
           <div>
             <label style="font-size:var(--fs-sm);color:var(--text3);margin-bottom:4px;display:block;">Select Target Book *</label>
-            <select wire:model="book_id" class="filter-input" style="width:100%" required @if(!$user_id) disabled @endif>
+            <select wire:model.live="book_id" class="filter-input" style="width:100%" required @if(!$user_id) disabled @endif>
                 <option value="">-- Choose Book --</option>
                 @foreach($booksList as $book)
                     <option value="{{ $book->id }}">#{{ $book->book_number }}</option>

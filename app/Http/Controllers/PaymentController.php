@@ -68,6 +68,11 @@ class PaymentController extends Controller
                     return response()->json(['status' => false, 'message' => 'Invalid book'], 400);
                 }
 
+                if ($book->user_id != $userId) {
+                    Log::error("Unauthorized contribution attempt for book $bookId by user $userId");
+                    return response()->json(['status' => false, 'message' => 'Unauthorized contribution payment'], 403);
+                }
+
                 // Refine week_number determination with a lock or check
                 $nextWeek = (Contribution::where('book_id', $bookId)->max('week_number') ?? 0) + 1;
 
@@ -157,13 +162,18 @@ class PaymentController extends Controller
 
                 $loan = Loan::find($loanId);
                 if ($loan) {
+                    if ($loan->user_id != $userId) {
+                        Log::error("Unauthorized loan repayment attempt for loan $loanId by user $userId");
+                        return response()->json(['status' => false, 'message' => 'Unauthorized loan repayment'], 403);
+                    }
+
                     // SECURITY: Prevent overpayment
                     $totalOwed = $loan->amount + $loan->interest;
                     $remainingBalance = $totalOwed - $loan->amount_repaid;
 
                     if ($amountPaid > $remainingBalance + 0.01) {
                         Log::error("Loan overpayment attempt for loan $loanId. Owed: $remainingBalance, Paid: $amountPaid");
-                        return response()->json(['status' => false, 'message' => 'Payment amount exceeds outstanding balance'], 400);
+                        return response()->json(['status' => false, 'message' => 'Payment exceeds outstanding balance'], 400);
                     }
 
                     LoanPayment::create([

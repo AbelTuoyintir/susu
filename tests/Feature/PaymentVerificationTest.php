@@ -113,4 +113,42 @@ class PaymentVerificationTest extends TestCase
         // It shouldn't create a payment record for user2 on user1's loan
         $this->assertEquals(0, LoanPayment::count());
     }
+
+    public function test_payment_verification_ensures_user_owns_book()
+    {
+        $user1 = User::factory()->create(['role' => 'user']);
+        $user2 = User::factory()->create(['role' => 'user']);
+
+        $book = Book::create([
+            'user_id' => $user1->id,
+            'book_number' => 'BK-TEST-2',
+            'contribution_amount' => 100,
+            'duration_weeks' => 10,
+            'start_date' => now(),
+            'status' => 'active',
+        ]);
+
+        // User 2 tries to pay for User 1's book contribution
+        Http::fake([
+            'https://api.paystack.co/transaction/verify/*' => Http::response([
+                'status' => true,
+                'data' => [
+                    'status' => 'success',
+                    'amount' => 11000,
+                    'metadata' => [
+                        'user_id' => $user2->id,
+                        'payment_type' => 'contribution',
+                        'book_id' => $book->id,
+                        'amount_to_pay' => 100,
+                        'welfare_to_pay' => 10,
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $response = $this->postJson(route('payment.verify'), ['reference' => 'test_ref_book']);
+
+        $response->assertStatus(403);
+        $this->assertEquals(0, Contribution::count());
+    }
 }

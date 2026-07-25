@@ -26,7 +26,7 @@ class VoltServiceProvider extends ServiceProvider
         // Prevent Volt anonymous component compilation from being executed twice,
         // which triggers:
         // "Cannot redeclare Livewire\\Volt\\Component@anonymous::mount()".
-        if (self::$mounted) {
+        if (self::$mounted && !app()->runningUnitTests()) {
             return;
         }
 

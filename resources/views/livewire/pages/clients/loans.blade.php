@@ -71,7 +71,7 @@ $submitRequest = function () {
         return;
     }
     
-    Loan::create([
+    $loan = Loan::create([
         'user_id' => auth()->id(),
         'book_id' => $this->selectedBookId,
         'amount' => $this->amount,
@@ -79,6 +79,14 @@ $submitRequest = function () {
         'due_date' => now()->addDays(30),
         'status' => 'pending',
     ]);
+
+    // Notify Admins
+    $admins = \App\Models\User::whereIn('role', ['admin', 'super_admin'])->get();
+    \Illuminate\Support\Facades\Notification::send($admins, new \App\Notifications\SystemNotification([
+        'title' => 'New Loan Request',
+        'message' => auth()->user()->name . " has requested a loan of GH₵ " . number_format($this->amount, 2) . " on Book #" . ($loan->book->book_number ?? ''),
+        'type' => 'info',
+    ]));
     
     // Reset fields
     $this->selectedBookId = '';

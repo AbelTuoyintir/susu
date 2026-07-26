@@ -24,7 +24,7 @@ class RemindContributionSharing extends Command
 
         foreach ($endedBooks as $book) {
             foreach ($admins as $admin) {
-                // SPAM PREVENTION: Check if we already sent a reminder in the last 24 hours for this book
+                // SPAM PREVENTION: Check if we already sent a sharing reminder for this book in the last 24 hours
                 $alreadyNotified = $admin->notifications()
                     ->where('data->book_id', $book->id)
                     ->where('data->type', 'sharing_reminder')

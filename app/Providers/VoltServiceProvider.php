@@ -30,7 +30,9 @@ class VoltServiceProvider extends ServiceProvider
             return;
         }
 
-        self::$mounted = true;
+        if (!app()->runningUnitTests()) {
+            self::$mounted = true;
+        }
 
         Volt::mount([
             resource_path('views/livewire'),
@@ -38,4 +40,3 @@ class VoltServiceProvider extends ServiceProvider
     }
 
 }
-

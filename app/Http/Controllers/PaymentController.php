@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\DB;
 use App\Models\Payment;
 use App\Models\Contribution;
 use App\Models\Loan;
@@ -157,6 +158,10 @@ class PaymentController extends Controller
                         'amount' => $amountToPay + $welfareToPay,
                         'transaction_id' => $reference,
                     ]));
+
+                } catch (\Exception $e) {
+                    Log::error("Database transaction failed during loan payment verification: " . $e->getMessage());
+                    return response()->json(['status' => false, 'message' => 'An error occurred during payment processing'], 500);
                 }
 
             } elseif ($paymentType === 'loan') {

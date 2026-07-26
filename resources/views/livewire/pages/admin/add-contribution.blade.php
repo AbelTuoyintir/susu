@@ -40,13 +40,7 @@ with(function () {
 });
 
 $updatedBookId = function ($val) {
-    if (!$val) {
-        $this->week_number = 1;
-        $this->contribution = '';
-        $this->welfare = '';
-        return;
-    }
-
+    if (!$val) return;
     $book = Book::find($val);
     if ($book) {
         $this->week_number = (Contribution::where('book_id', $book->id)->max('week_number') ?? 0) + 1;

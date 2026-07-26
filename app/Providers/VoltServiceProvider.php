@@ -23,9 +23,9 @@ class VoltServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Prevent Volt anonymous component compilation from being executed twice,
-        // which triggers:
-        // "Cannot redeclare Livewire\\Volt\\Component@anonymous::mount()".
+        // Prevent Volt anonymous component compilation from being executed twice in non-testing environments,
+        // which triggers: "Cannot redeclare Livewire\\Volt\\Component@anonymous::mount()".
+        // In testing, Laravel boots multiple times within the same process, so we must always mount.
         if (self::$mounted && !app()->runningUnitTests()) {
             return;
         }

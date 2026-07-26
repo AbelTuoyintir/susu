@@ -32,8 +32,8 @@ class ContributionController extends Controller
         $missedWeeks = $currentWeek - $lastWeek - 1;
 
         $contribution = $book->contribution_amount;
-        $welfare = 0.10 * $contribution;
-        $penalty = 0.10 * $contribution;
+        $welfare = (float) \App\Models\Setting::val('welfare_amount', 10);
+        $penalty = (float) \App\Models\Setting::val('penalty_amount', 6);
 
         DB::transaction(function () use ($book, $currentWeek, $missedWeeks, $contribution, $welfare, $penalty) {
 

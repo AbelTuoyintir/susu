@@ -58,10 +58,11 @@ class PaymentController extends Controller
                 return response()->json(['status' => false, 'message' => 'Payment amount mismatch'], 400);
             }
 
-            // Check if payment already processed
-            if (Payment::where('transaction_id', $reference)->exists()) {
-                return response()->json(['status' => true, 'message' => 'Already processed']);
-            }
+                    // Cross-check amounts
+                    if (abs($actualAmountPaid - $expectedAmount) > 0.01) {
+                        Log::error("Payment amount mismatch for ref: $reference. Expected: $expectedAmount, Paid: $actualAmountPaid");
+                        return response()->json(['status' => false, 'message' => 'Payment amount mismatch'], 400);
+                    }
 
             if ($paymentType === 'contribution') {
                 $bookId = $metadata['book_id'];

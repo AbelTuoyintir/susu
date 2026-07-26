@@ -3,6 +3,7 @@
 use function Livewire\Volt\layout;
 use function Livewire\Volt\state;
 use function Livewire\Volt\with;
+use function Livewire\Volt\mount;
 use Illuminate\Support\Facades\Hash;
 
 layout('layouts.client');
@@ -19,7 +20,7 @@ state([
     'new_password_confirmation' => '',
 ]);
 
-$mount = function () {
+mount(function () {
     $user = auth()->user();
     $this->phone = $user->phone;
     $this->phoneOne = $user->phoneOne;
@@ -27,7 +28,7 @@ $mount = function () {
     $this->city = $user->city;
     $this->state = $user->state;
     $this->zip = $user->zip;
-};
+});
 
 $saveProfile = function () {
     $this->validate([

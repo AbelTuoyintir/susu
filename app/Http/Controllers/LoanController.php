@@ -31,38 +31,41 @@ class LoanController extends Controller
         // Policy: Loan must be exactly 100% of savings
         if (abs($request->amount - $totalSaved) > 0.01) {
             return response()->json([
-                'error' => 'Loan amount must be exactly equivalent to your total savings (GH₵ ' . number_format($totalSaved, 2) . ')'
+                'message' => 'Loan amount must match total savings'
             ], 400);
         }
 
         // 🚫 Check existing loan
         if ($book->loans()->whereIn('status', ['pending', 'active', 'defaulted'])->exists()) {
             return response()->json([
-                'error' => 'Clear existing loan first'
+                'message' => 'User already has an active or pending loan'
             ], 400);
         }
 
-        $rate = \App\Models\Setting::val('loan_interest_rate', 10) / 100;
-        $interest = $rate * $request->amount;
+        return DB::transaction(function () use ($book, $request) {
+            $rate = \App\Models\Setting::val('loan_interest_rate', 10) / 100;
+            $interest = $rate * $request->amount;
 
-        $loan = Loan::create([
-            'user_id' => auth()->id(),
-            'book_id' => $book->id,
-            'amount' => $request->amount,
-            'interest' => $interest,
-            'due_date' => now()->addMonth(),
-        ]);
+            $loan = Loan::create([
+                'user_id' => auth()->id(),
+                'book_id' => $book->id,
+                'amount' => $request->amount,
+                'interest' => $interest,
+                'due_date' => now()->addMonth(),
+                'status' => 'pending',
+            ]);
 
-        // Ledger record
-        Ledger::create([
-            'user_id' => auth()->id(),
-            'book_id' => $book->id,
-            'type' => 'loan',
-            'amount' => -$request->amount,
-            'description' => 'Loan taken',
-        ]);
+            // Ledger record
+            Ledger::create([
+                'user_id' => auth()->id(),
+                'book_id' => $book->id,
+                'type' => 'loan',
+                'amount' => -$request->amount,
+                'description' => 'Loan requested',
+            ]);
 
-        return response()->json($loan);
+            return response()->json($loan);
+        });
     }
 
     // 💳 Repay Loan

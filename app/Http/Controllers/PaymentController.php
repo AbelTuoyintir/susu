@@ -15,7 +15,6 @@ use App\Notifications\PaymentReceived;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\DB;
 
 class PaymentController extends Controller
 {
@@ -38,145 +37,146 @@ class PaymentController extends Controller
         $data = $response->json();
         if ($data['status'] && $data['data']['status'] === 'success') {
             try {
-            // SECURITY: Verify the actual amount paid (in kobo/pesewas)
-            $actualAmountPaid = $data['data']['amount'] / 100;
+                // SECURITY: Verify the actual amount paid (in kobo/pesewas)
+                $actualAmountPaid = $data['data']['amount'] / 100;
 
-            $metadata = $data['data']['metadata'];
-            $userId = $metadata['user_id'];
-            $paymentType = $metadata['payment_type'];
+                $metadata = $data['data']['metadata'];
+                $userId = $metadata['user_id'];
+                $paymentType = $metadata['payment_type'];
 
-            // Determine expected amount from metadata
-            $expectedAmount = 0;
-            if ($paymentType === 'contribution') {
-                $expectedAmount = $metadata['amount_to_pay'] + $metadata['welfare_to_pay'];
-            } elseif ($paymentType === 'loan') {
-                $expectedAmount = $metadata['loan_payment_amount'];
-            }
-
-            // Cross-check amounts
-            if (abs($actualAmountPaid - $expectedAmount) > 0.01) {
-                Log::error("Payment amount mismatch for ref: $reference. Expected: $expectedAmount, Paid: $actualAmountPaid");
-                return response()->json(['status' => false, 'message' => 'Payment amount mismatch'], 400);
-            }
-
-                    // Cross-check amounts
-                    if (abs($actualAmountPaid - $expectedAmount) > 0.01) {
-                        Log::error("Payment amount mismatch for ref: $reference. Expected: $expectedAmount, Paid: $actualAmountPaid");
-                        return response()->json(['status' => false, 'message' => 'Payment amount mismatch'], 400);
-                    }
-
-            if ($paymentType === 'contribution') {
-                $bookId = $metadata['book_id'];
-                $book = Book::find($bookId);
-                if (!$book) {
-                    return response()->json(['status' => false, 'message' => 'Invalid book'], 400);
+                // Determine expected amount from metadata
+                $expectedAmount = 0;
+                if ($paymentType === 'contribution') {
+                    $expectedAmount = $metadata['amount_to_pay'] + $metadata['welfare_to_pay'];
+                } elseif ($paymentType === 'loan') {
+                    $expectedAmount = $metadata['loan_payment_amount'];
                 }
 
-                $nextWeek = DB::transaction(function () use ($bookId, $userId, $actualAmountPaid, $reference, $book) {
-                    // Refine week_number determination with a lock or check
-                    $nextWeek = (Contribution::where('book_id', $bookId)->max('week_number') ?? 0) + 1;
-
-                    // Double check for duplicate week record to avoid race conditions
-                    if (Contribution::where('book_id', $bookId)->where('week_number', $nextWeek)->exists()) {
-                        throw new \Exception('This week payment has already been recorded');
-                    }
-
-                    // Validate against settings
-                    $expectedContribution = $book->contribution_amount;
-                    $expectedWelfare = (float) \App\Models\Setting::val('welfare_amount', 10);
-
-                    $amountToPay = $expectedContribution; // Use server-side value
-                    $welfareToPay = $expectedWelfare; // Use server-side value
-
-                    if (abs($actualAmountPaid - ($amountToPay + $welfareToPay)) > 0.01) {
-                         throw new \Exception('Payment amount mismatch');
-                    }
-
-                    // 1. Create Contribution
-                    Contribution::create([
-                        'user_id' => $userId,
-                        'book_id' => $bookId,
-                        'week_number' => $nextWeek,
-                        'contribution' => $amountToPay,
-                        'welfare' => $welfareToPay,
-                        'penalty' => 0,
-                        'is_missed' => false,
-                    ]);
-
-                    // 2. Create Ledger entries
-                    Ledger::create([
-                        'user_id' => $userId,
-                        'book_id' => $bookId,
-                        'type' => 'contribution',
-                        'amount' => $amountToPay,
-                        'week_number' => $nextWeek,
-                        'description' => "Contribution for Week $nextWeek (via Paystack)",
-                    ]);
-
-                    Ledger::create([
-                        'user_id' => $userId,
-                        'book_id' => $bookId,
-                        'type' => 'welfare',
-                        'amount' => $welfareToPay,
-                        'week_number' => $nextWeek,
-                        'description' => "Welfare for Week $nextWeek (via Paystack)",
-                    ]);
-
-                    // 3. Create Contribution Payment record
-                    Payment::create([
-                        'user_id' => $userId,
-                        'book_id' => $bookId,
-                        'payment_type' => 'contribution',
-                        'transaction_id' => $reference,
-                        'payment_method' => 'card',
-                        'amount_paid' => $actualAmountPaid,
-                        'status' => 'completed',
-                        'paid_at' => now(),
-                    ]);
-
-                    return $nextWeek;
-                });
-
-                // Notify User
-                $user = \App\Models\User::find($userId);
-                if ($user) {
-                    $amountToPay = $book->contribution_amount;
-                    $welfareToPay = (float) \App\Models\Setting::val('welfare_amount', 10);
-
-                    $user->notify(new PaymentReceived([
-                        'title' => 'Contribution Received',
-                        'message' => "Your contribution for Week " . $nextWeek . " (GH₵ " . number_format($amountToPay + $welfareToPay, 2) . ") has been received.",
-                        'amount' => $amountToPay + $welfareToPay,
-                        'transaction_id' => $reference,
-                    ]));
-
-                    // Notify Admins
-                    $admins = \App\Models\User::whereIn('role', ['admin', 'super_admin'])->get();
-                    Notification::send($admins, new PaymentReceived([
-                        'title' => 'Contribution Received (Admin)',
-                        'message' => "A contribution of GH₵ " . number_format($amountToPay + $welfareToPay, 2) . " has been received from " . $user->name . " for Week $nextWeek.",
-                        'amount' => $amountToPay + $welfareToPay,
-                        'transaction_id' => $reference,
-                    ]));
-
-                } catch (\Exception $e) {
-                    Log::error("Database transaction failed during loan payment verification: " . $e->getMessage());
-                    return response()->json(['status' => false, 'message' => 'An error occurred during payment processing'], 500);
+                // Cross-check amounts
+                if (abs($actualAmountPaid - $expectedAmount) > 0.01) {
+                    Log::error("Payment amount mismatch for ref: $reference. Expected: $expectedAmount, Paid: $actualAmountPaid");
+                    return response()->json(['status' => false, 'message' => 'Payment amount mismatch'], 400);
                 }
 
-            } elseif ($paymentType === 'loan') {
-                $loanId = $metadata['loan_id'];
-                $amountPaid = $metadata['loan_payment_amount'];
+                if ($paymentType === 'contribution') {
+                    $bookId = $metadata['book_id'];
+                    $book = Book::find($bookId);
+                    if (!$book) {
+                        return response()->json(['status' => false, 'message' => 'Invalid book'], 400);
+                    }
 
-                DB::transaction(function () use ($loanId, $amountPaid, $userId, $reference, $actualAmountPaid) {
-                    $loan = Loan::lockForUpdate()->find($loanId);
-                    if ($loan && $loan->user_id == $userId) {
+                    // Ownership check to prevent fraud
+                    if ($book->user_id != $userId) {
+                        return response()->json(['status' => false, 'message' => 'Unauthorized contribution payment'], 400);
+                    }
+
+                    $nextWeek = DB::transaction(function () use ($bookId, $userId, $actualAmountPaid, $reference, $book) {
+                        // Refine week_number determination with a lock or check
+                        $nextWeek = (Contribution::where('book_id', $bookId)->max('week_number') ?? 0) + 1;
+
+                        // Double check for duplicate week record to avoid race conditions
+                        if (Contribution::where('book_id', $bookId)->where('week_number', $nextWeek)->exists()) {
+                            throw new \Exception('This week payment has already been recorded');
+                        }
+
+                        // Validate against settings
+                        $expectedContribution = $book->contribution_amount;
+                        $expectedWelfare = (float) \App\Models\Setting::val('welfare_amount', 10);
+
+                        $amountToPay = $expectedContribution; // Use server-side value
+                        $welfareToPay = $expectedWelfare; // Use server-side value
+
+                        if (abs($actualAmountPaid - ($amountToPay + $welfareToPay)) > 0.01) {
+                             throw new \Exception('Payment amount mismatch');
+                        }
+
+                        // 1. Create Contribution
+                        Contribution::create([
+                            'user_id' => $userId,
+                            'book_id' => $bookId,
+                            'week_number' => $nextWeek,
+                            'contribution' => $amountToPay,
+                            'welfare' => $welfareToPay,
+                            'penalty' => 0,
+                            'is_missed' => false,
+                        ]);
+
+                        // 2. Create Ledger entries
+                        Ledger::create([
+                            'user_id' => $userId,
+                            'book_id' => $bookId,
+                            'type' => 'contribution',
+                            'amount' => $amountToPay,
+                            'week_number' => $nextWeek,
+                            'description' => "Contribution for Week $nextWeek (via Paystack)",
+                        ]);
+
+                        Ledger::create([
+                            'user_id' => $userId,
+                            'book_id' => $bookId,
+                            'type' => 'welfare',
+                            'amount' => $welfareToPay,
+                            'week_number' => $nextWeek,
+                            'description' => "Welfare for Week $nextWeek (via Paystack)",
+                        ]);
+
+                        // 3. Create Contribution Payment record
+                        Payment::create([
+                            'user_id' => $userId,
+                            'book_id' => $bookId,
+                            'payment_type' => 'contribution',
+                            'transaction_id' => $reference,
+                            'payment_method' => 'card',
+                            'amount_paid' => $actualAmountPaid,
+                            'status' => 'completed',
+                            'paid_at' => now(),
+                        ]);
+
+                        return $nextWeek;
+                    });
+
+                    // Notify User
+                    $user = \App\Models\User::find($userId);
+                    if ($user) {
+                        $amountToPay = $book->contribution_amount;
+                        $welfareToPay = (float) \App\Models\Setting::val('welfare_amount', 10);
+
+                        $user->notify(new PaymentReceived([
+                            'title' => 'Contribution Received',
+                            'message' => "Your contribution for Week " . $nextWeek . " (GH₵ " . number_format($amountToPay + $welfareToPay, 2) . ") has been received.",
+                            'amount' => $amountToPay + $welfareToPay,
+                            'transaction_id' => $reference,
+                        ]));
+
+                        // Notify Admins
+                        $admins = \App\Models\User::whereIn('role', ['admin', 'super_admin'])->get();
+                        Notification::send($admins, new PaymentReceived([
+                            'title' => 'Contribution Received (Admin)',
+                            'message' => "A contribution of GH₵ " . number_format($amountToPay + $welfareToPay, 2) . " has been received from " . $user->name . " for Week $nextWeek.",
+                            'amount' => $amountToPay + $welfareToPay,
+                            'transaction_id' => $reference,
+                        ]));
+                    }
+
+                } elseif ($paymentType === 'loan') {
+                    $loanId = $metadata['loan_id'];
+                    $amountPaid = $metadata['loan_payment_amount'];
+
+                    DB::transaction(function () use ($loanId, $amountPaid, $userId, $reference, $actualAmountPaid) {
+                        $loan = Loan::lockForUpdate()->find($loanId);
+                        if (!$loan) {
+                            throw new \Exception('Invalid loan');
+                        }
+                        if ($loan->user_id != $userId) {
+                            throw new \Exception('Unauthorized loan payment');
+                        }
+
                         // SECURITY: Prevent overpayment
                         $totalOwed = $loan->amount + $loan->interest;
                         $remainingBalance = $totalOwed - $loan->amount_repaid;
 
                         if ($amountPaid > $remainingBalance + 0.01) {
-                             throw new \Exception('Payment exceeds outstanding balance');
+                             throw new \Exception('Payment amount exceeds outstanding balance');
                         }
 
                         LoanPayment::create([
@@ -226,11 +226,10 @@ class PaymentController extends Controller
                             'amount' => $amountPaid,
                             'transaction_id' => $reference,
                         ]));
-                    }
-                });
-            }
+                    });
+                }
 
-            return response()->json(['status' => true, 'message' => 'Payment successful']);
+                return response()->json(['status' => true, 'message' => 'Payment successful']);
             } catch (\Exception $e) {
                 return response()->json(['status' => false, 'message' => $e->getMessage()], 400);
             }

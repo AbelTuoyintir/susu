@@ -30,6 +30,22 @@ rules([
     'is_missed' => 'boolean',
 ]);
 
+$updatedBookId = function ($val) {
+    if (!$val) {
+        $this->week_number = 1;
+        $this->contribution = '';
+        $this->welfare = '';
+        return;
+    }
+
+    $book = Book::find($val);
+    if ($book) {
+        $this->week_number = (Contribution::where('book_id', $book->id)->max('week_number') ?? 0) + 1;
+        $this->contribution = $book->contribution_amount;
+        $this->welfare = \App\Models\Setting::val('welfare_amount', 10);
+    }
+};
+
 with(function () {
     return [
         'usersList' => User::where('status', 'active')->orderBy('name')->get(),

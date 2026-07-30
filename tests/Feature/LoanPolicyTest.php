@@ -56,4 +56,46 @@ class LoanPolicyTest extends TestCase
             'amount' => 200,
         ]);
     }
+
+    public function test_client_loan_amount_must_match_savings()
+    {
+        $user = User::factory()->create(['role' => 'user']);
+        $book = Book::create([
+            'user_id' => $user->id,
+            'book_number' => 'BK-C01',
+            'contribution_amount' => 150,
+            'status' => 'active',
+            'start_date' => now(),
+            'end_date' => now()->addYear(),
+        ]);
+
+        // Total savings = 300
+        Contribution::create(['user_id' => $user->id, 'book_id' => $book->id, 'week_number' => 1, 'contribution' => 150, 'welfare' => 10, 'penalty' => 0, 'is_missed' => false]);
+        Contribution::create(['user_id' => $user->id, 'book_id' => $book->id, 'week_number' => 2, 'contribution' => 150, 'welfare' => 10, 'penalty' => 0, 'is_missed' => false]);
+
+        $this->actingAs($user);
+
+        Volt::test('pages.clients.loans')
+            ->set('selectedBookId', $book->id)
+            ->assertSet('savings', 300)
+            ->assertSet('maxLoanLimit', 300)
+            ->set('amount', 200) // Invalid: must match savings (300)
+            ->call('submitRequest')
+            ->assertHasErrors(['amount' => 'in']);
+
+        Volt::test('pages.clients.loans')
+            ->set('selectedBookId', $book->id)
+            ->assertSet('savings', 300)
+            ->assertSet('maxLoanLimit', 300)
+            ->set('amount', 300) // Valid: matches savings exactly
+            ->call('submitRequest')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('loans', [
+            'user_id' => $user->id,
+            'book_id' => $book->id,
+            'amount' => 300,
+            'status' => 'pending',
+        ]);
+    }
 }

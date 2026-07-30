@@ -55,6 +55,16 @@ with(function () {
     ];
 });
 
+$updatedBookId = function ($val) {
+    if (!$val) return;
+    $book = Book::find($val);
+    if ($book) {
+        $this->week_number = (Contribution::where('book_id', $book->id)->max('week_number') ?? 0) + 1;
+        $this->contribution = $book->contribution_amount;
+        $this->welfare = \App\Models\Setting::val('welfare_amount', 10);
+    }
+};
+
 $save = function () {
     $this->validate();
 

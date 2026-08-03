@@ -3,10 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\BelongsToTenant;
 
 class Payment extends Model
 {
-    //
+    use BelongsToTenant;
 
     protected $fillable = [
         'user_id',
@@ -18,6 +19,7 @@ class Payment extends Model
         'amount_paid',
         'status',
         'paid_at',
+        'tenant_id',
     ];
 
     public function user(){

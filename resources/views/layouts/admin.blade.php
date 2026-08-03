@@ -279,10 +279,10 @@
 <!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">
-    <div class="logo-icon">C</div>
+    <div class="logo-icon">{{ auth()->check() && auth()->user()->tenant ? strtoupper(substr(auth()->user()->tenant->name, 0, 1)) : 'C' }}</div>
     <div>
-      <div class="logo-text">CoopAdmin</div>
-      <div class="logo-sub">Savings & Loans</div>
+      <div class="logo-text" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:140px;">{{ auth()->check() && auth()->user()->tenant ? auth()->user()->tenant->name : 'CoopAdmin' }}</div>
+      <div class="logo-sub">Savings & Loans Admin</div>
     </div>
   </div>
   <nav class="sidebar-nav">

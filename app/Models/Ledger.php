@@ -3,10 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\BelongsToTenant;
 
 class Ledger extends Model
 {
-    //
+    use BelongsToTenant;
 
     protected $fillable = [
         'user_id',
@@ -15,6 +16,7 @@ class Ledger extends Model
         'amount',
         'week_number',
         'description',
+        'tenant_id',
     ];
 
     public function user(){

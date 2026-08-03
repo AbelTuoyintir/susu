@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\Loan;
+use App\Models\Tenant;
 use App\Notifications\LoanPaymentReminder;
 use Carbon\Carbon;
 
@@ -13,6 +14,24 @@ class RemindLoanPayments extends Command
     protected $description = 'Send reminders for loans due soon';
 
     public function handle()
+    {
+        $tenants = Tenant::all();
+
+        if ($tenants->isEmpty()) {
+            $this->remindForCurrentTenant();
+        } else {
+            foreach ($tenants as $tenant) {
+                Tenant::forTenant($tenant->id, function () use ($tenant) {
+                    $this->info("Sending loan reminders for tenant: {$tenant->name}");
+                    $this->remindForCurrentTenant();
+                });
+            }
+        }
+
+        $this->info('Reminders sent.');
+    }
+
+    protected function remindForCurrentTenant()
     {
         $dueSoon = Loan::where('status', 'active')
             ->whereDate('due_date', '<=', Carbon::now()->addDays(3))
@@ -30,7 +49,5 @@ class RemindLoanPayments extends Command
                 $loan->user->notify(new LoanPaymentReminder($loan));
             }
         }
-
-        $this->info('Reminders sent.');
     }
 }

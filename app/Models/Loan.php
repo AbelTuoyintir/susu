@@ -3,10 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\BelongsToTenant;
 
 class Loan extends Model
 {
-    //
+    use BelongsToTenant;
 
     protected $fillable = [
         'user_id',
@@ -15,6 +16,7 @@ class Loan extends Model
         'interest',
         'due_date',
         'status',
+        'tenant_id',
     ];
 
     protected $appends = ['amount_repaid', 'progress_percentage'];

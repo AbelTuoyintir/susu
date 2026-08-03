@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Models\Book;
 use App\Models\User;
+use App\Models\Tenant;
 use App\Notifications\ContributionSharingReminder;
 use Carbon\Carbon;
 
@@ -14,6 +15,24 @@ class RemindContributionSharing extends Command
     protected $description = 'Remind admin to share contributions for books that ended';
 
     public function handle()
+    {
+        $tenants = Tenant::all();
+
+        if ($tenants->isEmpty()) {
+            $this->remindForCurrentTenant();
+        } else {
+            foreach ($tenants as $tenant) {
+                Tenant::forTenant($tenant->id, function () use ($tenant) {
+                    $this->info("Sending sharing reminders for tenant: {$tenant->name}");
+                    $this->remindForCurrentTenant();
+                });
+            }
+        }
+
+        $this->info('Sharing reminders sent to admins.');
+    }
+
+    protected function remindForCurrentTenant()
     {
         $endedBooks = Book::where('status', 'active')
             ->whereDate('end_date', '<=', Carbon::now())
@@ -36,7 +55,5 @@ class RemindContributionSharing extends Command
                 }
             }
         }
-
-        $this->info('Sharing reminders sent to admins.');
     }
 }

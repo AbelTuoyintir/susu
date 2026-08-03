@@ -6,8 +6,7 @@ use Illuminate\Console\Command;
 use App\Models\Book;
 use App\Models\Contribution;
 use App\Models\Setting;
-use App\Models\User;
-use Carbon\Carbon;
+use App\Models\Tenant;
 
 class ApplyWeeklyPenalties extends Command
 {
@@ -15,6 +14,23 @@ class ApplyWeeklyPenalties extends Command
     protected $description = 'Automatically apply penalties for missed contributions';
 
     public function handle()
+    {
+        $tenants = Tenant::all();
+        if ($tenants->isEmpty()) {
+            $this->applyForCurrentTenant();
+        } else {
+            foreach ($tenants as $tenant) {
+                Tenant::forTenant($tenant->id, function () use ($tenant) {
+                    $this->info("Applying penalties for tenant: {$tenant->name}");
+                    $this->applyForCurrentTenant();
+                });
+            }
+        }
+
+        $this->info('Weekly penalty check complete.');
+    }
+
+    protected function applyForCurrentTenant()
     {
         if (Setting::val('auto_apply_penalties', '0') !== '1') {
             $this->info('Auto-apply penalties is disabled.');
@@ -27,10 +43,6 @@ class ApplyWeeklyPenalties extends Command
         foreach ($activeBooks as $book) {
             $lastContribution = Contribution::where('book_id', $book->id)->latest('week_number')->first();
             $nextWeekNumber = ($lastContribution ? $lastContribution->week_number : 0) + 1;
-
-            // Logic to determine if a week is missed.
-            // In a real system, this would check if today is past the weekly deadline.
-            // For this implementation, we check if there's no contribution for the current calculated week.
 
             $alreadyRecorded = Contribution::where('book_id', $book->id)
                 ->where('week_number', $nextWeekNumber)
@@ -49,7 +61,5 @@ class ApplyWeeklyPenalties extends Command
                 $this->info("Penalty applied to Book #{$book->book_number} for Week {$nextWeekNumber}");
             }
         }
-
-        $this->info('Weekly penalty check complete.');
     }
 }

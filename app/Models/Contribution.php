@@ -3,10 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\BelongsToTenant;
 
 class Contribution extends Model
 {
-    //
+    use BelongsToTenant;
 
     protected $fillable = [
         'user_id',
@@ -16,6 +17,7 @@ class Contribution extends Model
         'welfare',
         'penalty',
         'is_missed',
+        'tenant_id',
     ];
 
     public function user()

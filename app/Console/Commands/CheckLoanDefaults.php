@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Loan;
+use App\Models\Tenant;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
@@ -25,8 +26,28 @@ class CheckLoanDefaults extends Command
 
     public function handle(): int
     {
-        $chunkSize = (int) $this->option('chunk');
+        $tenants = Tenant::all();
+        $updated = 0;
 
+        if ($tenants->isEmpty()) {
+            $updated += $this->checkDefaultsForCurrentTenant();
+        } else {
+            foreach ($tenants as $tenant) {
+                $updated += Tenant::forTenant($tenant->id, function () use ($tenant) {
+                    $this->info("Checking defaults for tenant: {$tenant->name}");
+                    return $this->checkDefaultsForCurrentTenant();
+                });
+            }
+        }
+
+        $this->info("Defaults updated: {$updated}");
+
+        return self::SUCCESS;
+    }
+
+    protected function checkDefaultsForCurrentTenant(): int
+    {
+        $chunkSize = (int) $this->option('chunk');
         $now = Carbon::now();
         $updated = 0;
 
@@ -44,9 +65,6 @@ class CheckLoanDefaults extends Command
                 });
         });
 
-        $this->info("Defaults updated: {$updated}");
-
-        return self::SUCCESS;
+        return $updated;
     }
 }
-

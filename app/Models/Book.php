@@ -3,10 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\BelongsToTenant;
 
 class Book extends Model
 {
-    //
+    use BelongsToTenant;
+
     protected $fillable = [
         'user_id',
         'book_number',
@@ -15,6 +17,7 @@ class Book extends Model
         'start_date',
         'end_date',
         'status',
+        'tenant_id',
     ];
 
     protected $appends = ['total_contributions', 'balance'];

@@ -13,11 +13,9 @@ trait BelongsToTenant
     public static function bootBelongsToTenant()
     {
         static::creating(function ($model) {
-            $tenantId = null;
-            if (auth()->check() && auth()->user()->tenant_id) {
+            $tenantId = Tenant::currentId();
+            if (! $tenantId && auth()->hasUser()) {
                 $tenantId = auth()->user()->tenant_id;
-            } elseif (Tenant::currentId()) {
-                $tenantId = Tenant::currentId();
             }
 
             if ($tenantId && ! $model->tenant_id) {
@@ -26,11 +24,9 @@ trait BelongsToTenant
         });
 
         static::addGlobalScope('tenant', function (Builder $builder) {
-            $tenantId = null;
-            if (auth()->check() && auth()->user()->tenant_id) {
+            $tenantId = Tenant::currentId();
+            if (! $tenantId && auth()->hasUser()) {
                 $tenantId = auth()->user()->tenant_id;
-            } elseif (Tenant::currentId()) {
-                $tenantId = Tenant::currentId();
             }
 
             if ($tenantId) {

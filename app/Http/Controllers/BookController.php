@@ -31,6 +31,13 @@ class BookController extends Controller
 
         $user = auth()->user();
 
+        $tenant = $user->tenant ?? null;
+        if ($tenant && $tenant->hasReachedLimit('books')) {
+            return response()->json([
+                'error' => 'Your organization\'s subscription plan passbook limit of ' . $tenant->getLimit('books') . ' books has been reached. Please upgrade your plan.'
+            ], 403);
+        }
+
         // 🚫 Rule: Max 3 books
         if ($user->books()->count() >= 3) {
             return response()->json([

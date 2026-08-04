@@ -67,7 +67,7 @@ class PaymentController extends Controller
 
                     // Ownership check to prevent fraud
                     if ($book->user_id != $userId) {
-                        return response()->json(['status' => false, 'message' => 'Unauthorized contribution payment'], 400);
+                        return response()->json(['status' => false, 'message' => 'Unauthorized contribution payment'], 403);
                     }
 
                     $nextWeek = DB::transaction(function () use ($bookId, $userId, $actualAmountPaid, $reference, $book) {

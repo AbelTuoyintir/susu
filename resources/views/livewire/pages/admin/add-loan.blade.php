@@ -49,6 +49,12 @@ $updatedBookId = function ($val) {
 };
 
 $save = function () {
+    $tenant = auth()->user()->tenant;
+    if ($tenant && $tenant->hasReachedLimit('loans')) {
+        $this->addError('amount', 'Your subscription plan loan limit of ' . $tenant->getLimit('loans') . ' loans has been reached. Please upgrade your plan.');
+        return;
+    }
+
     $this->savings = \App\Models\Contribution::where('book_id', $this->book_id)
         ->where('is_missed', false)
         ->sum('contribution');

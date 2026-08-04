@@ -35,6 +35,12 @@ with(function () {
 $save = function () {
     $this->validate();
 
+    $tenant = auth()->user()->tenant;
+    if ($tenant && $tenant->hasReachedLimit('books')) {
+        $this->addError('contribution_amount', 'Your subscription plan passbook limit of ' . $tenant->getLimit('books') . ' books has been reached. Please upgrade your plan.');
+        return;
+    }
+
     // Generate unique Book Number
     do {
         $bookNumber = 'BK-' . strtoupper(Str::random(5));

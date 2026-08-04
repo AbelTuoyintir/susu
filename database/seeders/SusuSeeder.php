@@ -30,14 +30,36 @@ class SusuSeeder extends Seeder
         DB::table('contributions')->delete();
         DB::table('books')->delete();
         DB::table('users')->delete();
+        DB::table('tenants')->delete();
 
         try {
-            DB::table('sqlite_sequence')->whereIn('name', ['loan_payments', 'payments', 'loans', 'contributions', 'books', 'users'])->delete();
+            DB::table('sqlite_sequence')->whereIn('name', ['loan_payments', 'payments', 'loans', 'contributions', 'books', 'users', 'tenants'])->delete();
         } catch (\Exception $e) {
             // Ignore if not sqlite or table doesn't exist
         }
 
         Schema::enableForeignKeyConstraints();
+
+        // Create Tenant
+        $tenant = \App\Models\Tenant::create([
+            'name' => 'Main Co-op',
+            'slug' => 'main',
+            'plan' => 'free',
+            'status' => 'active',
+        ]);
+        \App\Models\Tenant::setTenantId($tenant->id);
+
+        // Create Super Admin
+        User::create([
+            'name' => 'Super Administrator',
+            'email' => 'super@susu.com',
+            'phone' => '0557777777',
+            'role' => 'super_admin',
+            'password' => Hash::make('password'),
+            'member_id' => '999999',
+            'status' => 'active',
+            'tenant_id' => $tenant->id,
+        ]);
 
         // 1. Create Admins
         $admin = User::create([
@@ -48,6 +70,7 @@ class SusuSeeder extends Seeder
             'password' => Hash::make('password'),
             'member_id' => '100001',
             'status' => 'active',
+            'tenant_id' => $tenant->id,
         ]);
 
         // 2. Create Clients

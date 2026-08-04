@@ -49,4 +49,9 @@ Route::view('profile', 'profile')
 
 Route::post('payment/verify', [App\Http\Controllers\PaymentController::class, 'verify'])->name('payment.verify');
 
+// Super Admin Route
+Route::middleware(['auth', 'verified', 'super_admin'])->group(function () {
+    Volt::route('super-admin', 'pages.super-admin.dashboard')->name('super-admin');
+});
+
 require __DIR__.'/auth.php';

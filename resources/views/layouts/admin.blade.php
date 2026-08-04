@@ -286,6 +286,11 @@
     </div>
   </div>
   <nav class="sidebar-nav">
+    @if(auth()->check() && auth()->user()->role === 'super_admin')
+      <div class="nav-section">Global SaaS</div>
+      <a href="/super-admin" class="nav-item {{ request()->routeIs('super-admin') ? 'active' : '' }}" wire:navigate><span class="nav-icon">🛡️</span> Super Admin Panel</a>
+    @endif
+
     <div class="nav-section">Overview</div>
     <a href="/dashboard" class="nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}" wire:navigate><span class="nav-icon">◈</span> Dashboard</a>
 
@@ -329,6 +334,7 @@
   <div>
     @php
       $routePageMap = [
+        'super-admin'    => ['Super Admin Dashboard', 'Global SaaS Metrics & Multi-Tenant Management'],
         'dashboard'      => ['Dashboard', 'Overview & Key Metrics'],
         'users'          => ['User Management', 'View · Search · Block'],
         'users.add'      => ['Add New User', 'Create a new member profile'],

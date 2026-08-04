@@ -11,6 +11,13 @@ class UserController extends Controller
     //add user
     public function addUser(Request $request)
     {
+        $tenant = auth()->user()->tenant ?? null;
+        if ($tenant && $tenant->hasReachedLimit('users')) {
+            return redirect()->back()->withInput()->withErrors([
+                'name' => 'Your subscription plan user limit of ' . $tenant->getLimit('users') . ' users has been reached. Please upgrade your plan.'
+            ]);
+        }
+
         $validated = $request->validate([
             'name' => 'required',
             'email' => 'nullable|email',

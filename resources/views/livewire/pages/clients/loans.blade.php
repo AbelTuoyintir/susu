@@ -44,6 +44,12 @@ $updatedAmount = function ($val) {
 };
 
 $submitRequest = function () {
+    $tenant = auth()->user()->tenant;
+    if ($tenant && $tenant->hasReachedLimit('loans')) {
+        session()->flash('error', 'Your organization\'s subscription plan loan limit of ' . $tenant->getLimit('loans') . ' loans has been reached. Please contact your administrator.');
+        return;
+    }
+
     // SECURITY: Re-calculate limit on backend to prevent client-side manipulation
     $book = Book::find($this->selectedBookId);
     if ($book) {

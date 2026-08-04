@@ -13,6 +13,13 @@ class LoanController extends Controller
     // 💰 Request Loan
     public function requestLoan(Request $request, $bookId)
     {
+        $tenant = auth()->user()->tenant ?? null;
+        if ($tenant && $tenant->hasReachedLimit('loans')) {
+            return response()->json([
+                'message' => 'Your organization\'s subscription plan loan limit of ' . $tenant->getLimit('loans') . ' loans has been reached. Please contact your administrator.'
+            ], 403);
+        }
+
         $book = Book::findOrFail($bookId);
 
         if ($book->user_id !== auth()->id()) {

@@ -49,6 +49,46 @@ Thank you for considering contributing to the Laravel framework! The contributio
 
 In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
 
+## Susu SaaS Application Architecture
+
+This is a modern multi-tenant Susu SaaS application engineered using Laravel, Livewire, Livewire Volt, and Tailwind CSS. Below is a detailed breakdown of the application's multi-tenant architecture, tiered subscription plan limits, and super-admin controls.
+
+### 1. Multi-Tenant Architecture & Database Layout
+The application leverages **single-database multi-tenancy** designed around the `Tenant` model.
+* **Scoping & Middlewares**:
+  - `IdentifyTenant` middleware dynamically determines the active tenant context using either the host subdomain/slug or the authenticated user's `tenant_id`.
+  - To prevent tenant data leaks, the `BelongsToTenant` scope is automatically applied across crucial models: `User`, `Book`, `Contribution`, `Loan`, `LoanPayment`, `Ledger`, `Payment`, `Setting`, and `Announcement`.
+  - Static scoping utility `Tenant::setTenantId($id)` governs the active tenant context. For console tasks or queued jobs, `Tenant::forTenant($tenantId, $callback)` allows dynamic tenant switching.
+* **Tenant Lifecycle & Isolation**:
+  - Registering a new organization via `/register` creates a new `Tenant` with a unique name and URL slug.
+  - The registering user is created as an administrative user with the `'admin'` role under that tenant, and default settings are seeded.
+
+### 2. Tiered Subscription Plans & Usage Limits
+SaaS subscription plans are handled programmatically to limit the resources available to each organization. There are three primary tiers:
+
+* **Free**:
+  - Max users: 10
+  - Max books: 10
+  - Max loans: 5
+* **Premium**:
+  - Max users: 100
+  - Max books: 200
+  - Max loans: 100
+* **Enterprise**:
+  - Virtually unlimited (999,999) users, books, and loans.
+
+The limits are enforced on the backend via `$tenant->hasReachedLimit($feature)` checks before new users, books, or loans can be added. If a tenant hits a limit, appropriate validation errors are triggered.
+
+### 3. Super Admin Dashboard & Controls
+The application features a built-in Super Admin role (`'super_admin'`) and a dedicated management dashboard `/super-admin`.
+* **Access Control**: Regular tenant admins (`'admin'`) and standard users are blocked with a `403 Forbidden` response. Only authenticated `'super_admin'` users can access this page.
+* **Management Operations**:
+  - **Modify Plan**: Super-admins can upgrade or downgrade any tenant's plan (`free`, `premium`, `enterprise`) instantly.
+  - **Tenant Suspension / Status Control**: Super-admins can suspend an entire organization's access by toggling their status to `inactive`.
+  - **Suspension Enforcement**: Inactive tenants are blocked from any regular application flow with a 403 response indicating suspension. Super-admins themselves are allowed to bypass this block for management.
+
+---
+
 ## Security Vulnerabilities
 
 If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.

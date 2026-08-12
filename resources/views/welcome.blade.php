@@ -336,10 +336,61 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        /* ── PRICING ── */
+        .pricing {
+            position: relative; z-index: 1;
+            max-width: 1100px; margin: 0 auto;
+            padding: 80px 24px;
+        }
+        .pricing-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 48px;
+        }
+        .pricing-card {
+            background: var(--bg2); border: 1px solid var(--border);
+            border-radius: 16px; padding: 36px 28px;
+            transition: all .25s; cursor: default;
+            position: relative; overflow: hidden;
+            display: flex; flex-direction: column;
+        }
+        .pricing-card.popular {
+            border-color: var(--accent);
+            box-shadow: 0 8px 32px var(--accent-glow);
+        }
+        .pricing-card.popular::before {
+            content: 'POPULAR';
+            position: absolute; top: 12px; right: 12px;
+            background: var(--accent); color: #000;
+            font-size: 9px; font-weight: 700; padding: 4px 10px;
+            border-radius: 20px; letter-spacing: .5px;
+        }
+        .pricing-card:hover {
+            border-color: var(--border2); transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+        .pricing-card.popular:hover {
+            border-color: var(--accent);
+            box-shadow: 0 20px 40px var(--accent-glow);
+        }
+        .plan-name { font-size: 18px; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+        .plan-price { font-size: 38px; font-weight: 700; margin-bottom: 20px; font-family: 'DM Sans', sans-serif; }
+        .plan-price span { font-size: 14px; color: var(--text3); font-weight: 400; }
+        .plan-features { list-style: none; margin-bottom: 32px; flex-grow: 1; }
+        .plan-features li { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--text2); margin-bottom: 12px; }
+        .plan-features li::before { content: '✓'; color: var(--accent); font-weight: 700; }
+        .btn-pricing {
+            display: block; text-align: center; padding: 12px; border-radius: 8px;
+            font-size: 14px; font-weight: 600; transition: all .2s; border: 1px solid transparent;
+        }
+        .btn-pricing-secondary { background: var(--bg3); color: var(--text); border-color: var(--border2); }
+        .btn-pricing-secondary:hover { background: var(--bg); border-color: var(--text3); }
+        .btn-pricing-primary { background: var(--accent); color: #000; border-color: var(--accent); }
+        .btn-pricing-primary:hover { background: var(--accent2); box-shadow: 0 8px 20px var(--accent-glow); }
+
         /* ── RESPONSIVE ── */
         @media (max-width: 768px) {
             .nav { padding: 14px 20px; }
             .features-grid { grid-template-columns: 1fr; }
+            .pricing-grid { grid-template-columns: 1fr; }
             .hiw-steps { grid-template-columns: 1fr 1fr; }
             .hiw-steps::before { display: none; }
             .stats-strip { gap: 24px; }
@@ -575,6 +626,64 @@
             <div class="feature-icon" style="background:rgba(210,153,34,0.1)">🔔</div>
             <div class="feature-title">SMS Notifications</div>
             <div class="feature-desc">Send bulk SMS messages with pre-built templates for contribution reminders, penalty notices, and year-end payout announcements.</div>
+        </div>
+    </div>
+</section>
+
+<!-- ── PRICING & PLANS ── -->
+<section class="pricing" id="pricing">
+    <div style="text-align:center; max-width:600px; margin:0 auto;">
+        <div class="section-tag">Flexible Plans</div>
+        <h2 class="section-title">Pricing & Plans</h2>
+        <p class="section-sub">Choose a subscription tier that matches your cooperative's size. Each plan has strict auto-enforced limits to fit your operational scale.</p>
+    </div>
+
+    <div class="pricing-grid">
+        <!-- Free Plan -->
+        <div class="pricing-card">
+            <h3 class="plan-name" style="color: var(--text2)">Free</h3>
+            <div class="plan-price">GH₵0<span> / month</span></div>
+            <ul class="plan-features">
+                <li>Up to <strong>10 Users</strong></li>
+                <li>Up to <strong>10 Savings Books</strong></li>
+                <li>Up to <strong>5 Loans</strong></li>
+                <li>Real-time Dashboard</li>
+                <li>Standard Features</li>
+                <li>Basic Support</li>
+            </ul>
+            <a href="{{ route('register') }}" class="btn-pricing btn-pricing-secondary">Get Started</a>
+        </div>
+
+        <!-- Premium Plan -->
+        <div class="pricing-card popular">
+            <h3 class="plan-name" style="color: var(--accent)">Premium</h3>
+            <div class="plan-price">GH₵150<span> / month</span></div>
+            <ul class="plan-features">
+                <li>Up to <strong>100 Users</strong></li>
+                <li>Up to <strong>200 Savings Books</strong></li>
+                <li>Up to <strong>100 Loans</strong></li>
+                <li>Real-time Dashboard</li>
+                <li>Auto-apply Penalties</li>
+                <li>Allow Loan Extensions</li>
+                <li>Priority Email Support</li>
+            </ul>
+            <a href="{{ route('register') }}" class="btn-pricing btn-pricing-primary">Upgrade Now</a>
+        </div>
+
+        <!-- Enterprise Plan -->
+        <div class="pricing-card">
+            <h3 class="plan-name" style="color: #bc8cff">Enterprise</h3>
+            <div class="plan-price">GH₵450<span> / month</span></div>
+            <ul class="plan-features">
+                <li><strong>Unlimited Users</strong> (999k+)</li>
+                <li><strong>Unlimited Books</strong> (999k+)</li>
+                <li><strong>Unlimited Loans</strong> (999k+)</li>
+                <li>Dedicated Account Manager</li>
+                <li>Multi-tenant Setup Support</li>
+                <li>Custom SMS Sender ID</li>
+                <li>Premium SLA Support</li>
+            </ul>
+            <a href="{{ route('register') }}" class="btn-pricing btn-pricing-secondary">Contact Us</a>
         </div>
     </div>
 </section>

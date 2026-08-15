@@ -272,6 +272,71 @@
         .feature-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
         .feature-desc { font-size: 13px; color: var(--text2); line-height: 1.6; }
 
+        /* ── PRICING & PLANS ── */
+        .pricing {
+            position: relative; z-index: 1;
+            max-width: 1100px; margin: 0 auto;
+            padding: 80px 24px;
+        }
+        .pricing-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 48px;
+        }
+        .pricing-card {
+            background: var(--bg2); border: 1px solid var(--border);
+            border-radius: 16px; padding: 32px 24px;
+            transition: all .25s; cursor: default;
+            position: relative; overflow: hidden;
+            display: flex; flex-direction: column;
+            justify-content: space-between;
+        }
+        .pricing-card::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, var(--accent), transparent);
+            opacity: 0; transition: opacity .25s;
+        }
+        .pricing-card:hover { border-color: var(--border2); transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
+        .pricing-card:hover::before { opacity: 1; }
+
+        /* Premium Plan specific styles (popular) */
+        .pricing-card.popular {
+            border-color: rgba(0, 212, 168, 0.35);
+            background: linear-gradient(180deg, var(--bg2), rgba(0,212,168,0.03));
+            box-shadow: 0 10px 30px rgba(0, 212, 168, 0.05);
+        }
+        .pricing-card.popular::before {
+            opacity: 1;
+            background: linear-gradient(90deg, var(--accent), #38bdf8);
+        }
+        .popular-badge {
+            position: absolute; top: 12px; right: 16px;
+            background: var(--accent-dim); border: 1px solid rgba(0,212,168,0.3);
+            border-radius: 20px; padding: 4px 10px;
+            font-size: 10px; font-weight: 600; color: var(--accent);
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+
+        .plan-name { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+        .plan-desc { font-size: 13px; color: var(--text2); margin-bottom: 24px; min-height: 40px; }
+        .plan-price { font-size: 32px; font-weight: 700; font-family: 'DM Sans', sans-serif; color: var(--accent); margin-bottom: 24px; display: flex; align-items: baseline; gap: 4px; }
+        .plan-price span { font-size: 14px; color: var(--text3); font-weight: 400; }
+        .plan-limits { list-style: none; margin-bottom: 32px; padding: 0; }
+        .plan-limit-item { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text); margin-bottom: 12px; }
+        .plan-limit-item .check-icon { color: var(--accent); font-weight: bold; font-size: 14px; }
+        .plan-limit-item.disabled { color: var(--text3); text-decoration: line-through; }
+        .plan-limit-item.disabled .check-icon { color: var(--text3); }
+
+        .btn-pricing {
+            display: block; text-align: center; width: 100%;
+            padding: 12px 24px; border-radius: 8px;
+            font-size: 13px; font-weight: 600; cursor: pointer;
+            transition: all .2s; border: 1px solid transparent;
+        }
+        .btn-pricing-primary { background: var(--accent); color: #000; border-color: var(--accent); }
+        .btn-pricing-primary:hover { background: var(--accent2); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,212,168,0.3); }
+        .btn-pricing-secondary { background: var(--bg3); color: var(--text); border-color: var(--border2); }
+        .btn-pricing-secondary:hover { background: rgba(255,255,255,0.05); border-color: var(--text2); }
+
         /* ── HOW IT WORKS ── */
         .hiw {
             position: relative; z-index: 1;
@@ -340,6 +405,7 @@
         @media (max-width: 768px) {
             .nav { padding: 14px 20px; }
             .features-grid { grid-template-columns: 1fr; }
+            .pricing-grid { grid-template-columns: 1fr; }
             .hiw-steps { grid-template-columns: 1fr 1fr; }
             .hiw-steps::before { display: none; }
             .stats-strip { gap: 24px; }
@@ -369,6 +435,7 @@
         </div>
     </div>
     <div class="nav-links">
+        <a href="#pricing" class="btn-nav btn-ghost">Pricing</a>
         @if (Route::has('login'))
             @auth
                 <a href="{{ url('/dashboard') }}" class="btn-nav btn-ghost">Dashboard →</a>
@@ -575,6 +642,68 @@
             <div class="feature-icon" style="background:rgba(210,153,34,0.1)">🔔</div>
             <div class="feature-title">SMS Notifications</div>
             <div class="feature-desc">Send bulk SMS messages with pre-built templates for contribution reminders, penalty notices, and year-end payout announcements.</div>
+        </div>
+    </div>
+</section>
+
+<!-- ── PRICING & PLANS ── -->
+<section class="pricing" id="pricing">
+    <div style="max-width:600px; margin: 0 auto; text-align: center;">
+        <div class="section-tag">Flexible Subscriptions</div>
+        <h2 class="section-title">Plans Built for Your Organization</h2>
+        <p class="section-sub" style="margin: 0 auto;">Choose the right tier to manage your cooperative, Susu group, or savings association. Scale up limits seamlessly as you grow.</p>
+    </div>
+    <div class="pricing-grid">
+        <!-- Free Plan -->
+        <div class="pricing-card">
+            <div>
+                <div class="plan-name">Free Plan</div>
+                <p class="plan-desc">For small and newly starting cooperative groups.</p>
+                <div class="plan-price">GH₵0<span>/month</span></div>
+                <ul class="plan-limits">
+                    <li class="plan-limit-item"><span class="check-icon">✓</span> Up to 10 active users</li>
+                    <li class="plan-limit-item"><span class="check-icon">✓</span> Up to 10 active passbooks</li>
+                    <li class="plan-limit-item"><span class="check-icon">✓</span> Up to 5 approved loans</li>
+                    <li class="plan-limit-item"><span class="check-icon">✓</span> Standard ledger & reporting</li>
+                    <li class="plan-limit-item disabled"><span class="check-icon">✗</span> Bulk SMS notifications</li>
+                </ul>
+            </div>
+            <a href="{{ route('register') }}" class="btn-pricing btn-pricing-secondary">Get Started Free</a>
+        </div>
+
+        <!-- Premium Plan -->
+        <div class="pricing-card popular">
+            <span class="popular-badge">Most Popular</span>
+            <div>
+                <div class="plan-name" style="color:var(--accent)">Premium Plan</div>
+                <p class="plan-desc">Best for growing cooperatives and active associations.</p>
+                <div class="plan-price">GH₵190<span>/month</span></div>
+                <ul class="plan-limits">
+                    <li class="plan-limit-item"><span class="check-icon">✓</span> Up to 100 active users</li>
+                    <li class="plan-limit-item"><span class="check-icon">✓</span> Up to 200 active passbooks</li>
+                    <li class="plan-limit-item"><span class="check-icon">✓</span> Up to 100 approved loans</li>
+                    <li class="plan-limit-item"><span class="check-icon">✓</span> Standard ledger & reporting</li>
+                    <li class="plan-limit-item"><span class="check-icon">✓</span> Bulk SMS notifications & alerts</li>
+                </ul>
+            </div>
+            <a href="{{ route('register') }}" class="btn-pricing btn-pricing-primary">Go Premium</a>
+        </div>
+
+        <!-- Enterprise Plan -->
+        <div class="pricing-card">
+            <div>
+                <div class="plan-name">Enterprise Plan</div>
+                <p class="plan-desc">For large networks, credit unions, and enterprise associations.</p>
+                <div class="plan-price">GH₵490<span>/month</span></div>
+                <ul class="plan-limits">
+                    <li class="plan-limit-item"><span class="check-icon">✓</span> Unlimited active users</li>
+                    <li class="plan-limit-item"><span class="check-icon">✓</span> Unlimited active passbooks</li>
+                    <li class="plan-limit-item"><span class="check-icon">✓</span> Unlimited approved loans</li>
+                    <li class="plan-limit-item"><span class="check-icon">✓</span> Standard ledger & reporting</li>
+                    <li class="plan-limit-item"><span class="check-icon">✓</span> Advanced SMS, customization & support</li>
+                </ul>
+            </div>
+            <a href="{{ route('register') }}" class="btn-pricing btn-pricing-secondary">Choose Enterprise</a>
         </div>
     </div>
 </section>

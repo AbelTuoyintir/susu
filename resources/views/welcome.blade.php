@@ -417,6 +417,54 @@
             .preview-wrap { display: none; }
             .hiw-steps { grid-template-columns: 1fr; }
         }
+
+        /* ── PRICING ── */
+        .pricing {
+            position: relative; z-index: 1;
+            max-width: 1100px; margin: 0 auto;
+            padding: 80px 24px;
+        }
+        .pricing-grid {
+            display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; margin-top: 48px;
+        }
+        .pricing-card {
+            background: var(--bg2); border: 1px solid var(--border);
+            border-radius: 16px; padding: 32px 24px;
+            transition: all .25s; cursor: default;
+            position: relative; overflow: hidden;
+            display: flex; flex-direction: column;
+            justify-content: space-between;
+        }
+        .pricing-card.popular {
+            border-color: var(--accent);
+            background: linear-gradient(180deg, var(--bg2) 0%, rgba(0,212,168,0.03) 100%);
+        }
+        .pricing-badge {
+            position: absolute; top: 12px; right: 12px;
+            background: var(--accent); color: #000;
+            font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 20px;
+            text-transform: uppercase;
+        }
+        .plan-name { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+        .plan-price { font-size: 32px; font-weight: 700; font-family: 'DM Mono', monospace; margin-bottom: 16px; color: var(--accent); }
+        .plan-price span { font-size: 14px; color: var(--text3); font-weight: normal; }
+        .plan-features { list-style: none; margin-bottom: 28px; font-size: 13px; color: var(--text2); display: flex; flex-direction: column; gap: 10px; }
+        .plan-features li { display: flex; align-items: center; gap: 8px; }
+        .plan-features li::before { content: '✓'; color: var(--accent); font-weight: bold; }
+        .btn-pricing {
+            display: block; text-align: center; width: 100%;
+            padding: 12px; border-radius: 8px;
+            font-size: 13px; font-weight: 600; cursor: pointer;
+            transition: all .2s; border: 1px solid transparent;
+        }
+        .btn-pricing-primary { background: var(--accent); color: #000; border-color: var(--accent); }
+        .btn-pricing-primary:hover { background: var(--accent2); }
+        .btn-pricing-secondary { background: var(--bg3); color: var(--text); border-color: var(--border2); }
+        .btn-pricing-secondary:hover { background: var(--bg); }
+
+        @media (max-width: 768px) {
+            .pricing-grid { grid-template-columns: 1fr; gap: 20px; }
+        }
     </style>
 </head>
 <body>
@@ -736,6 +784,70 @@
                 <div class="hiw-title">Generate Reports</div>
                 <div class="hiw-desc">At year-end, calculate profit sharing automatically and generate PDF payout reports for each eligible member.</div>
             </div>
+        </div>
+    </div>
+</section>
+
+<!-- ── PRICING & PLANS ── -->
+<section class="pricing">
+    <div style="text-align:center; max-width:600px; margin: 0 auto 48px;">
+        <div class="section-tag">Flexible Subscription Plans</div>
+        <h2 class="section-title">Simple, Tiered Pricing</h2>
+        <p class="section-sub">Choose the perfect tier for your cooperative group. Upgrade or downgrade anytime directly from your dashboard.</p>
+    </div>
+    <div class="pricing-grid">
+        <!-- Free Plan -->
+        <div class="pricing-card">
+            <div>
+                <div class="plan-name">Free Plan</div>
+                <div class="plan-price">GH₵0<span>/month</span></div>
+                <ul class="plan-features">
+                    <li>Up to 10 Active Members</li>
+                    <li>Up to 10 Passbooks</li>
+                    <li>Up to 5 Disbursed Loans</li>
+                    <li>Weekly Contributions</li>
+                    <li>Defaulter Tracking</li>
+                    <li>Global Settings Seeding</li>
+                </ul>
+            </div>
+            <a href="{{ route('register') }}" class="btn-pricing btn-pricing-secondary">Start Free Now</a>
+        </div>
+
+        <!-- Premium Plan -->
+        <div class="pricing-card popular">
+            <div class="pricing-badge">Popular</div>
+            <div>
+                <div class="plan-name">Premium Plan</div>
+                <div class="plan-price">GH₵199<span>/month</span></div>
+                <ul class="plan-features">
+                    <li>Up to 100 Active Members</li>
+                    <li>Up to 200 Passbooks</li>
+                    <li>Up to 100 Disbursed Loans</li>
+                    <li>Paystack Gateway Integration</li>
+                    <li>SMS Notification Templates</li>
+                    <li>Automated Weekly Penalties</li>
+                    <li>Advanced Report Generation</li>
+                </ul>
+            </div>
+            <a href="{{ route('register') }}" class="btn-pricing btn-pricing-primary">Go Premium</a>
+        </div>
+
+        <!-- Enterprise Plan -->
+        <div class="pricing-card">
+            <div>
+                <div class="plan-name">Enterprise Plan</div>
+                <div class="plan-price">Custom Pricing</div>
+                <ul class="plan-features">
+                    <li>Unlimited Active Members</li>
+                    <li>Unlimited Passbooks</li>
+                    <li>Unlimited Disbursed Loans</li>
+                    <li>Custom Multi-tenant Domain</li>
+                    <li>Priority Dedicated Support</li>
+                    <li>Bulk Data Imports & Exports</li>
+                    <li>SLA & Premium Security Guard</li>
+                </ul>
+            </div>
+            <a href="{{ route('register') }}" class="btn-pricing btn-pricing-secondary">Contact Sales</a>
         </div>
     </div>
 </section>

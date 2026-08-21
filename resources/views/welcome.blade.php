@@ -401,6 +401,56 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        /* ── PRICING ── */
+        .pricing {
+            position: relative; z-index: 1;
+            max-width: 1100px; margin: 0 auto;
+            padding: 80px 24px;
+        }
+        .pricing-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 48px;
+        }
+        .pricing-card {
+            background: var(--bg2); border: 1px solid var(--border);
+            border-radius: 16px; padding: 36px 28px;
+            transition: all .25s; cursor: default;
+            position: relative; overflow: hidden;
+            display: flex; flex-direction: column;
+        }
+        .pricing-card.popular {
+            border-color: var(--accent);
+            box-shadow: 0 8px 32px var(--accent-glow);
+        }
+        .pricing-card.popular::before {
+            content: 'POPULAR';
+            position: absolute; top: 12px; right: 12px;
+            background: var(--accent); color: #000;
+            font-size: 9px; font-weight: 700; padding: 4px 10px;
+            border-radius: 20px; letter-spacing: .5px;
+        }
+        .pricing-card:hover {
+            border-color: var(--border2); transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+        .pricing-card.popular:hover {
+            border-color: var(--accent);
+            box-shadow: 0 20px 40px var(--accent-glow);
+        }
+        .plan-name { font-size: 18px; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+        .plan-price { font-size: 38px; font-weight: 700; margin-bottom: 20px; font-family: 'DM Sans', sans-serif; }
+        .plan-price span { font-size: 14px; color: var(--text3); font-weight: 400; }
+        .plan-features { list-style: none; margin-bottom: 32px; flex-grow: 1; }
+        .plan-features li { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--text2); margin-bottom: 12px; }
+        .plan-features li::before { content: '✓'; color: var(--accent); font-weight: 700; }
+        .btn-pricing {
+            display: block; text-align: center; padding: 12px; border-radius: 8px;
+            font-size: 14px; font-weight: 600; transition: all .2s; border: 1px solid transparent;
+        }
+        .btn-pricing-secondary { background: var(--bg3); color: var(--text); border-color: var(--border2); }
+        .btn-pricing-secondary:hover { background: var(--bg); border-color: var(--text3); }
+        .btn-pricing-primary { background: var(--accent); color: #000; border-color: var(--accent); }
+        .btn-pricing-primary:hover { background: var(--accent2); box-shadow: 0 8px 20px var(--accent-glow); }
+
         /* ── RESPONSIVE ── */
         @media (max-width: 768px) {
             .nav { padding: 14px 20px; }
